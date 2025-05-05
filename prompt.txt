@@ -1,0 +1,485 @@
+I'll help you create a comprehensive System Architecture Diagram for the chat/school system. Based on the codebase, here's a detailed breakdown:
+
+### System Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        UI[React UI Components]
+        RC[React Context Providers]
+        CH[Custom Hooks]
+        RT[React Router]
+    end
+
+    subgraph "Communication Layer"
+        CL[Convex Live Query System]
+        WS[WebSocket Connection]
+        HTTP[HTTP REST APIs]
+    end
+
+    subgraph "Server Layer"
+        subgraph "Convex Backend"
+            QH[Query Handlers]
+            MH[Mutation Handlers]
+            AH[Action Handlers]
+            AS[Authentication Service]
+        end
+    end
+
+    subgraph "Database Layer"
+        subgraph "Tables"
+            UT[Users]
+            CT[Conversations]
+            MT[Messages]
+            AT[Announcements]
+            PT[Presence]
+            ST[Sessions]
+            RT[ReadReceipts]
+            NT[Notifications]
+            ACT[Activities]
+        end
+    end
+
+    subgraph "External Services"
+        CS[Cloud Storage]
+        PS[Push Notifications]
+        MS[Media Service]
+    end
+
+    %% Client Layer Connections
+    UI --> RC
+    RC --> CH
+    UI --> RT
+
+    %% Communication Layer Connections
+    RC --> CL
+    CL --> WS
+    CL --> HTTP
+
+    %% Server Layer Connections
+    WS --> QH
+    HTTP --> MH
+    HTTP --> AH
+    QH & MH & AH --> AS
+
+    %% Database Layer Connections
+    QH --> Tables
+    MH --> Tables
+    AH --> Tables
+
+    %% External Services Connections
+    MH --> CS
+    AS --> PS
+    MH --> MS
+```
+
+### Components Breakdown:
+
+1. **Client Layer**
+- **React UI Components**
+  - AppLayout
+  - Chat Components
+  - Profile Components
+  - Authentication Forms
+  - Settings Interface
+  - Announcements View
+
+- **React Context Providers**
+  - AuthContext
+  - ChatContext
+  - ThemeContext
+  - SettingsContext
+  - NavigationContext
+
+- **Custom Hooks**
+  - useAuth
+  - useChat
+  - useSettings
+  - useTheme
+
+2. **Communication Layer**
+- **Convex Live Query System**
+  - Real-time data synchronization
+  - WebSocket connection management
+  - Query caching and updates
+
+3. **Server Layer (Convex Backend)**
+- **Query Handlers**
+  - User queries
+  - Message queries
+  - Conversation queries
+  - Announcement queries
+
+- **Mutation Handlers**
+  - User updates
+  - Message operations
+  - Conversation management
+  - Settings updates
+
+- **Authentication Service**
+  - User registration
+  - Login/Logout
+  - Session management
+  - Token validation
+
+4. **Database Layer**
+- **Core Tables**
+  ```sql
+  users (
+    id, email, username, passwordHash, profilePicture,
+    status, isAdmin, blockedUsers, notificationSettings
+  )
+
+  conversations (
+    id, name, avatar, isGroup, creatorId, wallpaper,
+    isPrivate, lastMessageId, lastMessageTimestamp
+  )
+
+  messages (
+    id, conversationId, senderId, content, type,
+    timestamp, replyToId, isDeleted, isEdited
+  )
+
+  presence (
+    userId, lastSeen, isOnline
+  )
+  ```
+
+5. **External Services**
+- **Cloud Storage**
+  - Profile pictures
+  - Media attachments
+  - Group avatars
+
+- **Push Notifications**
+  - Message notifications
+  - Announcement alerts
+  - Group invites
+
+- **Media Service**
+  - Image processing
+  - Video compression
+  - File storage
+
+### Key Features:
+1. Real-time messaging
+2. Group conversations
+3. User presence tracking
+4. Media sharing
+5. School announcements
+6. Profile management
+7. Activity tracking
+
+### Security Features:
+1. Authentication tokens
+2. Password hashing
+3. Session management
+4. Access control
+5. Input validation
+
+### Data Flow:
+1. Client makes requests through Convex client
+2. Requests authenticated via tokens
+3. Server processes requests
+4. Database queries/updates executed
+5. Real-time updates pushed to clients
+6. External services called as needed
+
+This architecture provides:
+- Scalability through separate service layers
+- Real-time capabilities with WebSocket
+- Secure authentication and data access
+- Modular component structure
+- Clear separation of concerns
+
+Would you like me to elaborate on any specific part of the architecture?
+
+
+
+
+
+2.entity relationship diagram:
+
+I'll help you create an Entity Relationship Diagram (ERD) for the chat/school system based on the schema files. Here's the ERD using Mermaid notation:
+
+```mermaid
+erDiagram
+    Users ||--o{ Messages : sends
+    Users ||--o{ Conversations : creates
+    Users ||--o{ ConversationMembers : participates
+    Users ||--o{ Announcements : authors
+    Users ||--o{ UserActivity : has
+    Users ||--o{ Notifications : receives
+    Users ||--o{ Presence : tracks
+    Users ||--o{ Sessions : maintains
+    Users ||--o{ Settings : configures
+
+    Conversations ||--|{ Messages : contains
+    Conversations ||--|{ ConversationMembers : includes
+    Conversations ||--o{ JoinRequests : receives
+
+    Messages ||--o{ MessageReactions : has
+    Messages ||--o{ ReadReceipts : tracks
+    Messages ||--o{ Messages : replies_to
+
+    Users {
+        id ID PK
+        email string
+        username string
+        passwordHash string
+        profilePicture string
+        status enum
+        isAdmin boolean
+        blockedUsers array
+        isHidden boolean
+        notificationSettings json
+    }
+
+    Conversations {
+        id ID PK
+        name string
+        avatar string
+        isGroup boolean
+        creatorId string FK
+        wallpaper string
+        isPrivate boolean
+        lastMessageId ID FK
+        lastMessageTimestamp number
+        type enum
+        isActive boolean
+    }
+
+    ConversationMembers {
+        id ID PK
+        conversationId ID FK
+        userId ID FK
+        isAdmin boolean
+        isMuted boolean
+        joinedAt number
+        lastReadMessageId ID FK
+        isActive boolean
+        lastReadAt number
+    }
+
+    Messages {
+        id ID PK
+        conversationId ID FK
+        senderId ID FK
+        content string
+        type enum
+        timestamp number
+        replyToId ID FK
+        isDeleted boolean
+        isEdited boolean
+    }
+
+    MessageReactions {
+        id ID PK
+        messageId ID FK
+        userId ID FK
+        emoji string
+        timestamp number
+    }
+
+    ReadReceipts {
+        id ID PK
+        messageId ID FK
+        userId ID FK
+        readAt number
+    }
+
+    Announcements {
+        id ID PK
+        authorId ID FK
+        title string
+        content string
+        type enum
+        timestamp number
+    }
+
+    UserActivity {
+        id ID PK
+        userId ID FK
+        type enum
+        description string
+        timestamp number
+        relatedEntityId string
+        relatedEntityType enum
+    }
+
+    Notifications {
+        id ID PK
+        userId ID FK
+        type enum
+        read boolean
+        title string
+        content string
+        timestamp number
+        sourceId string
+        sourceType enum
+    }
+
+    Settings {
+        id ID PK
+        userId ID FK
+        theme enum
+        fontSize enum
+        chatBackground enum
+    }
+
+    Presence {
+        id ID PK
+        userId ID FK
+        lastSeen number
+        isOnline boolean
+    }
+
+    Sessions {
+        id ID PK
+        userId ID FK
+        token string
+        expiresAt number
+    }
+
+    JoinRequests {
+        id ID PK
+        conversationId ID FK
+        userId ID FK
+        requestedAt number
+        status enum
+    }
+```
+
+Key Relationships:
+
+1. **Users & Messages**:
+   - One user can send many messages (1:N)
+   - Each message belongs to one sender
+
+2. **Users & Conversations**:
+   - Users can participate in many conversations (M:N through ConversationMembers)
+   - One user can create many conversations (1:N)
+
+3. **Conversations & Messages**:
+   - One conversation contains many messages (1:N)
+   - Each message belongs to one conversation
+
+4. **Messages & Reactions**:
+   - One message can have many reactions (1:N)
+   - Each reaction belongs to one message and one user
+
+5. **Users & Notifications**:
+   - One user can have many notifications (1:N)
+   - Each notification belongs to one user
+
+6. **Users & Activities**:
+   - One user can have many activities (1:N)
+   - Each activity belongs to one user
+
+The diagram shows:
+- Primary and Foreign key relationships
+- Cardinality between entities (1:1, 1:N, M:N)
+- Required vs Optional relationships (||-- vs --o{)
+- Entity attributes with their data types
+
+This ERD represents a normalized database schema that supports:
+- User management
+- Real-time messaging
+- Group conversations
+- Activity tracking
+- Notifications
+- User presence
+- Session management
+
+
+
+mention all the tools and technologies used in this project:
+
+
+Here's a comprehensive list of tools and technologies used in the project:
+
+### Frontend
+1. **React & Core Libraries**
+- React 18
+- React Router DOM
+- React Query (TanStack Query)
+- TypeScript
+- Vite (Build tool)
+
+2. **UI Components & Styling**
+- Tailwind CSS
+- Shadcn/ui
+- Radix UI (Primitive components)
+- Lucide Icons
+- Framer Motion (Animations)
+- date-fns (Date formatting)
+
+3. **Real-time Features**
+- Convex (Backend & Real-time sync)
+- WebSocket connections
+- ZEGO Cloud (Video/Audio calls)
+
+### Backend & Database
+1. **Convex Platform**
+- Convex Server
+- Convex Database
+- Convex Functions (Query/Mutation/Action)
+- Convex Schema Definition
+
+2. **Authentication**
+- Custom JWT implementation
+- Session management
+- Password hashing
+
+### Cloud Services
+1. **Media Handling**
+- Cloudinary (Image/Video storage)
+- Media processing
+- File uploads
+
+### Development Tools
+1. **Code Quality**
+- ESLint
+- TypeScript
+- Git version control
+
+2. **Build Tools**
+- npm/Node.js
+- Vite
+- PostCSS
+- Autoprefixer
+
+### Environment & Configuration
+1. **Environment Variables**
+- `.env` files
+- Vite environment configs
+- Convex configuration
+
+### Testing & Development
+- React DevTools
+- Browser DevTools
+- Convex Development CLI
+
+### Libraries & Utilities
+1. **Utility Libraries**
+- clsx (Class name utilities)
+- tailwind-merge
+- class-variance-authority (cva)
+
+2. **Form Handling**
+- React Hook Form
+- Zod (Schema validation)
+
+This tech stack provides:
+- Modern frontend development
+- Real-time capabilities
+- Secure authentication
+- Scalable backend
+- Rich media support
+- Type safety
+- Component reusability
+- Responsive design
+- Performance optimization
+
+
+
