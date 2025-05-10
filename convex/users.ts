@@ -282,3 +282,87 @@ export const searchUsers = query({
     }));
   },
 }); 
+
+// Set a user as a lecturer (admin only)
+export const setUserAsLecturer = mutation({
+  args: {
+    sessionToken: sessionTokenValidator,
+    targetUserId: v.id("users"),
+    isLecturer: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await getAuthenticatedUser(ctx, args.sessionToken);
+    const { targetUserId, isLecturer } = args;
+
+    // Only admins can set lecturer status
+    if (!user.isAdmin) {
+      throw new ConvexError("Only administrators can change lecturer status");
+    }
+
+    // Get the target user
+    const targetUser = await ctx.db.get(targetUserId);
+    if (!targetUser) {
+      throw new ConvexError("User not found");
+    }
+
+    // Update the lecturer status
+    await ctx.db.patch(targetUserId, { isLecturer });
+
+    return { success: true };
+  },
+});
+
+// Get all lecturers
+export const getLecturers = query({
+  args: {
+    sessionToken: sessionTokenValidator,
+  },
+  handler: async (ctx, args) => {
+    const { user } = await getAuthenticatedUser(ctx, args.sessionToken);
+
+    // Only admins can get the list of all lecturers
+    if (!user.isAdmin) {
+      throw new ConvexError("Only administrators can view the list of lecturers");
+    }
+
+    // Get all users with lecturer role
+    const lecturers = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("isLecturer"), true))
+      .collect();
+
+    return lecturers.map(lecturer => ({
+      id: lecturer._id,
+      username: lecturer.username,
+      email: lecturer.email,
+      profilePicture: lecturer.profilePicture,
+      status: lecturer.status,
+    }));
+  },
+});
+
+// Check if current user is a lecturer
+export const isCurrentUserLecturer = query({
+  args: {
+    sessionToken: sessionTokenValidator,
+  },
+  handler: async (ctx, args) => {
+    const { user } = await getAuthenticatedUser(ctx, args.sessionToken);
+    return !!user.isLecturer;
+  },
+});
+
+// Manually set current user as lecturer (temporary fix)
+export const setCurrentUserAsLecturer = mutation({
+  args: {
+    sessionToken: sessionTokenValidator,
+  },
+  handler: async (ctx, args) => {
+    const { user, userId } = await getAuthenticatedUser(ctx, args.sessionToken);
+    
+    // Update user directly to be a lecturer
+    await ctx.db.patch(userId, { isLecturer: true });
+    
+    return { success: true };
+  },
+}); 

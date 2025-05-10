@@ -1,9 +1,13 @@
-import { api } from "../../convex/_generated/api";
 import { ConvexReactClient } from "convex/react";
-import { useQuery, useMutation } from 'convex/react';
+import { api as generatedApi } from "../../convex/_generated/api";
+import { FunctionReference } from "convex/server";
+import { Id } from "../../convex/_generated/dataModel";
 
-// Create the Convex client
-export const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+// Create a client for Convex
+export const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
+
+// Use the generated API for full type safety
+export const api = generatedApi;
 
 // Utility function to get session token from localStorage
 export const getSessionToken = (): string | null => {
@@ -99,6 +103,15 @@ export const users = {
     });
   },
 
+  setAsLecturer: async () => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return { success: false };
+
+    return convex.mutation(api.users.setCurrentUserAsLecturer, {
+      sessionToken,
+    });
+  },
+
   updateProfile: async (updates: {
     username?: string;
     profilePicture?: string;
@@ -159,10 +172,6 @@ export const users = {
       query,
     });
   },
-
-  get: (id: string) => useQuery(api.users.get, { id }),
-  search: (query: string) => useMutation(api.users.search, { query }),
-  update: (updates: any) => useMutation(api.users.update, updates),
 };
 
 // Messages API functions
@@ -269,21 +278,28 @@ export const messages = {
       conversationId,
     });
   },
-
-  list: (conversationId: string) => useQuery(api.messages.list, { conversationId }),
-  send: (conversationId: string, content: string) => 
-    useMutation(api.messages.send, { conversationId, content }),
-  update: (id: string, updates: any) => useMutation(api.messages.update, { id, updates }),
-  delete: (id: string) => useMutation(api.messages.delete, { id }),
 };
 
 // Conversations API functions
 export const conversations = {
-  createOneOnOne: async (otherUserId: string) => 
-    useMutation(api.conversations.createOneOnOne, { otherUserId }),
-  getUserConversations: () => useQuery(api.conversations.getUserConversations),
-  update: (id: string, updates: any) => useMutation(api.conversations.update, { id, updates }),
-  delete: (id: string) => useMutation(api.conversations.delete, { id }),
+  createOneOnOne: async (otherUserId: string) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return null;
+
+    return convex.mutation(api.conversations.createOneOnOne, {
+      sessionToken,
+      otherUserId,
+    });
+  },
+  
+  getUserConversations: async () => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return [];
+
+    return convex.query(api.conversations.getUserConversations, {
+      sessionToken,
+    });
+  },
 };
 
 // Announcements API functions
@@ -427,8 +443,24 @@ export const activities = {
 
 // Settings API
 export const settings = {
-  get: () => useQuery(api.settings.get),
-  update: (settings: any) => useMutation(api.settings.update, { settings }),
+  get: async () => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return null;
+
+    return convex.query(api.settings.get, {
+      sessionToken,
+    });
+  },
+  
+  update: async (settings: any) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return { success: false };
+
+    return convex.mutation(api.settings.update, {
+      sessionToken,
+      settings,
+    });
+  },
 };
 
 // Trending API functions

@@ -16,6 +16,7 @@ export default defineSchema({
       v.literal("Offline")
     ),
     isAdmin: v.boolean(),
+    isLecturer: v.optional(v.boolean()),
     blockedUsers: v.array(v.string()),
     isHidden: v.boolean(),
     notificationSettings: v.optional(v.object({
@@ -279,4 +280,74 @@ export default defineSchema({
   }).index("by_post", ["postId"])
     .index("by_author", ["authorId"])
     .index("by_comment_creation_time", ["createdAt"]),
+
+  // Post likes - tracks who has liked each post
+  postLikes: defineTable({
+    postId: v.id("posts"),
+    userId: v.id("users"),
+    timestamp: v.number(),
+  }).index("by_post", ["postId"])
+    .index("by_user", ["userId"])
+    .index("by_post_user", ["postId", "userId"]),
+    
+  // Comment likes - tracks who has liked each comment
+  commentLikes: defineTable({
+    commentId: v.id("comments"),
+    userId: v.id("users"),
+    timestamp: v.number(),
+  }).index("by_comment", ["commentId"])
+    .index("by_user", ["userId"])
+    .index("by_comment_user", ["commentId", "userId"]),
+
+  // Study Channels
+  studyChannels: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    lecturerId: v.id("users"), // The lecturer who manages this channel
+    avatar: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+  .index("by_lecturer", ["lecturerId"]),
+
+  // Study Subchannels
+  studySubchannels: defineTable({
+    channelId: v.id("studyChannels"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    studentGroups: v.array(v.string()), // Names/identifiers of student groups
+    createdAt: v.number(),
+  })
+  .index("by_channel", ["channelId"]),
+
+  // Channel Members - students assigned to channels/subchannels
+  channelMembers: defineTable({
+    userId: v.id("users"),
+    channelId: v.id("studyChannels"),
+    subchannelId: v.optional(v.id("studySubchannels")),
+    joinedAt: v.number(),
+  })
+  .index("by_user", ["userId"])
+  .index("by_channel", ["channelId"])
+  .index("by_subchannel", ["subchannelId"])
+  .index("by_channel_user", ["channelId", "userId"]),
+
+  // Channel Announcements - specifically for study channels
+  channelAnnouncements: defineTable({
+    channelId: v.id("studyChannels"),
+    subchannelId: v.optional(v.id("studySubchannels")),
+    authorId: v.id("users"),
+    title: v.string(),
+    content: v.string(),
+    type: v.union(
+      v.literal("text"),
+      v.literal("image"),
+      v.literal("video"),
+      v.literal("audio")
+    ),
+    timestamp: v.number(),
+  })
+  .index("by_channel", ["channelId"])
+  .index("by_subchannel", ["subchannelId"])
+  .index("by_channel_timestamp", ["channelId", "timestamp"])
+  .index("by_subchannel_timestamp", ["subchannelId", "timestamp"]),
 }); 

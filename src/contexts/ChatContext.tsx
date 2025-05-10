@@ -75,7 +75,7 @@ interface ChatContextType {
   loadMoreMessages: () => Promise<void>;
   startTyping: () => void;
   stopTyping: () => void;
-  typingUsers: string[];
+  typingUsers: {userId: string, username: string}[];
   refreshConversations: () => Promise<void>;
 }
 
@@ -113,17 +113,46 @@ const ConversationsProvider = ({
   children: React.ReactNode;
   onData: (data: any[]) => void;
 }) => {
-  // Always call useQuery unconditionally - but we'll pass empty params if not authenticated
+  // Always call useQuery unconditionally with "skip" when needed
   const data = useQuery(
     api.conversations.getUserConversations, 
-    isAuthenticated ? { sessionToken } : { sessionToken: "" as any, _skipQuery: true }
+    isAuthenticated && sessionToken ? { sessionToken } : "skip"
   );
   
   // Then use an effect to handle the data
   useEffect(() => {
-    // Only process data when authenticated and data exists
     if (isAuthenticated && data) {
-      onData(Array.isArray(data) ? data : []);
+      // Use type assertions to map server data to our interface
+      const mappedData = Array.isArray(data) 
+        ? data.map(conv => ({
+            id: conv.id,
+            name: conv.name || '',
+            avatar: conv.avatar,
+            wallpaper: '',
+            isGroup: conv.isGroup || conv.type === 'group',
+            members: conv.otherMember ? [
+              {
+                id: conv.otherMember.id,
+                username: conv.otherMember.username || '',
+                avatar: conv.otherMember.profilePicture,
+                status: conv.otherMember.status || 'Offline',
+                isOnline: false,
+                isAdmin: false
+              }
+            ] : [],
+            lastMessage: {
+              id: conv.lastMessageId || '',
+              content: '',
+              type: 'text' as MessageType,
+              timestamp: conv.lastMessageTimestamp || Date.now(),
+              senderId: '',
+              senderName: ''
+            },
+            unreadCount: 0
+          } as Conversation)) 
+        : [];
+      
+      onData(mappedData);
     } else {
       // When not authenticated, pass empty array
       onData([]);
@@ -152,12 +181,12 @@ const TypingIndicatorsProvider = ({
     [conversationId]
   );
   
-  // Always call useQuery unconditionally
+  // Always call useQuery unconditionally with "skip" when needed
   const data = useQuery(
     api.messages.getTypingIndicators, 
-    isAuthenticated && conversationId ? 
+    isAuthenticated && sessionToken && conversationId ? 
       { sessionToken, conversationId: safeConversationId } : 
-      { sessionToken: "" as any, conversationId: safeConversationId, _skipQuery: true }
+      "skip"
   );
   
   // Process the result in an effect
@@ -183,29 +212,76 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const [oldestMessageTimestamp, setOldestMessageTimestamp] = useState<number | null>(null);
   const [typingTimerRef, setTypingTimerRef] = useState<NodeJS.Timeout | null>(null);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<{userId: string, username: string}[]>([]);
   const { toast } = useToast();
   
   // Get the session token
-  const sessionToken = useMemo(() => getSessionToken(), []);
+  const sessionToken = useMemo(() => getSessionToken() || "", []);
   
   // Fetch conversations using useQuery
   const conversationsData = useQuery(
     api.conversations.getUserConversations,
-    isAuthenticated ? { sessionToken } : { sessionToken: "" as any, _skipQuery: true }
+    isAuthenticated && sessionToken ? { sessionToken } : "skip"
   );
 
   useEffect(() => {
     if (isAuthenticated && conversationsData) {
-      setConversations(Array.isArray(conversationsData) ? conversationsData : []);
+      // Use type assertions to map server data to our interface
+      const mappedConversations = Array.isArray(conversationsData) 
+        ? conversationsData.map(conv => ({
+            id: conv.id,
+            name: conv.name || '',
+            avatar: conv.avatar,
+            wallpaper: '',
+            isGroup: conv.isGroup || conv.type === 'group',
+            members: conv.otherMember ? [
+              {
+                id: conv.otherMember.id,
+                username: conv.otherMember.username || '',
+                avatar: conv.otherMember.profilePicture,
+                status: conv.otherMember.status || 'Offline',
+                isOnline: false,
+                isAdmin: false
+              }
+            ] : [],
+            lastMessage: {
+              id: conv.lastMessageId || '',
+              content: '',
+              type: 'text' as MessageType,
+              timestamp: conv.lastMessageTimestamp || Date.now(),
+              senderId: '',
+              senderName: ''
+            },
+            unreadCount: 0
+          } as Conversation)) 
+        : [];
+      
+      setConversations(mappedConversations);
     } else {
       setConversations([]);
     }
   }, [isAuthenticated, conversationsData]);
   
+  // Stop typing indicator - Define this first to avoid circular dependency
+  const stopTyping = useCallback(() => {
+    if (!currentConversation || !sessionToken) return;
+    
+    // Clear existing timer
+    if (typingTimerRef) {
+      clearTimeout(typingTimerRef);
+      setTypingTimerRef(null);
+    }
+    
+    // Send stop typing indicator
+    messagesApi.setTypingIndicator(
+      currentConversation.id,
+      false
+    );
+  }, [currentConversation, typingTimerRef, sessionToken]);
+  
   // Start typing indicator
   const startTyping = useCallback(() => {
-    if (!currentConversation) return;
+    if (!currentConversation || !sessionToken) return;
     
     // Clear any existing timer
     if (typingTimerRef) {
@@ -224,28 +300,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }, 5000);
     
     setTypingTimerRef(timer);
-  }, [currentConversation, typingTimerRef, sessionToken]);
-  
-  // Stop typing indicator
-  const stopTyping = useCallback(() => {
-    if (!currentConversation) return;
-    
-    // Clear existing timer
-    if (typingTimerRef) {
-      clearTimeout(typingTimerRef);
-      setTypingTimerRef(null);
-    }
-    
-    // Send stop typing indicator
-    messagesApi.setTypingIndicator(
-      currentConversation.id,
-      false
-    );
-  }, [currentConversation, typingTimerRef, sessionToken]);
+  }, [currentConversation, typingTimerRef, sessionToken, stopTyping]);
   
   // Poll for typing indicators
   useEffect(() => {
-    if (!currentConversation || !isAuthenticated) return;
+    if (!currentConversation || !isAuthenticated || !sessionToken) return;
     
     const pollTypingIndicators = async () => {
       try {
@@ -270,7 +329,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch messages
   const fetchMessages = useCallback(async () => {
-    if (!currentConversation) return;
+    if (!currentConversation || !sessionToken) return;
     
     setIsLoadingMessages(true);
     try {
@@ -328,10 +387,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   // Send a message
   const sendMessage = useCallback(async (content: string, type: MessageType, replyToId?: string) => {
-    if (!currentConversation) {
+    if (!currentConversation || !sessionToken) {
       toast({
         title: "Error",
-        description: "No active conversation selected",
+        description: "No active conversation selected or not authenticated",
         variant: "destructive",
       });
       return;
@@ -363,14 +422,18 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
   // Message handling functions
   const markAsRead = useCallback(async (messageId: string) => {
+    if (!sessionToken) return;
+    
     try {
       await messagesApi.markAsRead(messageId);
     } catch (error) {
       console.error('Error marking message as read:', error);
     }
-  }, []);
+  }, [sessionToken]);
 
   const deleteMessage = useCallback(async (messageId: string) => {
+    if (!sessionToken) return;
+    
     try {
       await messagesApi.deleteMessage(messageId);
       
@@ -389,9 +452,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive",
       });
     }
-  }, [toast, fetchMessages]);
+  }, [toast, fetchMessages, sessionToken]);
 
   const reactToMessage = useCallback(async (messageId: string, emoji: string) => {
+    if (!sessionToken) return;
+    
     try {
       await messagesApi.reactToMessage(messageId, emoji);
       
@@ -405,11 +470,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         variant: "destructive",
       });
     }
-  }, [toast, fetchMessages]);
+  }, [toast, fetchMessages, sessionToken]);
   
   // Load more messages for pagination
   const loadMoreMessages = useCallback(async () => {
-    if (!currentConversation || !oldestMessageTimestamp || isLoadingMessages) return;
+    if (!currentConversation || !oldestMessageTimestamp || isLoadingMessages || !sessionToken) return;
     
     setIsLoadingMessages(true);
     try {
@@ -443,7 +508,38 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     if (isAuthenticated && sessionToken) {
       setIsLoadingConversations(true);
       try {
-        const data = await conversationsApi.getUserConversations();
+        const rawData = await conversationsApi.getUserConversations();
+        
+        // Use type assertions to map server data to our interface
+        const data = Array.isArray(rawData) 
+          ? rawData.map(conv => ({
+              id: conv.id,
+              name: conv.name || '',
+              avatar: conv.avatar,
+              wallpaper: '',
+              isGroup: conv.isGroup || conv.type === 'group',
+              members: conv.otherMember ? [
+                {
+                  id: conv.otherMember.id,
+                  username: conv.otherMember.username || '',
+                  avatar: conv.otherMember.profilePicture,
+                  status: conv.otherMember.status || 'Offline',
+                  isOnline: false,
+                  isAdmin: false
+                }
+              ] : [],
+              lastMessage: {
+                id: conv.lastMessageId || '',
+                content: '',
+                type: 'text' as MessageType,
+                timestamp: conv.lastMessageTimestamp || Date.now(),
+                senderId: '',
+                senderName: ''
+              },
+              unreadCount: 0
+            } as Conversation)) 
+          : [];
+        
         setConversations(data);
         
         // If we have a current conversation, update it with fresh data

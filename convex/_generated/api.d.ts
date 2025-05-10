@@ -16,10 +16,13 @@ import type {
 import type * as activities from "../activities.js";
 import type * as announcements from "../announcements.js";
 import type * as auth from "../auth.js";
+import type * as channelAnnouncements from "../channelAnnouncements.js";
+import type * as channels from "../channels.js";
 import type * as conversations from "../conversations.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as settings from "../settings.js";
+import type * as subchannels from "../subchannels.js";
 import type * as trending from "../trending.js";
 import type * as users from "../users.js";
 import type * as utils_auth from "../utils/auth.js";
@@ -40,10 +43,13 @@ declare const fullApi: ApiFromModules<{
   activities: typeof activities;
   announcements: typeof announcements;
   auth: typeof auth;
+  channelAnnouncements: typeof channelAnnouncements;
+  channels: typeof channels;
   conversations: typeof conversations;
   messages: typeof messages;
   notifications: typeof notifications;
   settings: typeof settings;
+  subchannels: typeof subchannels;
   trending: typeof trending;
   users: typeof users;
   "utils/auth": typeof utils_auth;

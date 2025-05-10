@@ -75,7 +75,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <div className="p-3 border-t">
+    <div className="w-full">
       {replyingTo && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -86,8 +86,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
             <div className="text-xs text-muted-foreground mb-0.5">Replying to message</div>
             <div className="text-sm truncate">{replyingTo.content}</div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onCancelReply}>
-            <X className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={onCancelReply} className="h-6 w-6">
+            <X className="h-3 w-3" />
           </Button>
         </motion.div>
       )}
@@ -124,19 +124,20 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </motion.div>
       )}
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <div className="flex-1 relative">
           <textarea
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[60px] max-h-[200px] resize-none pr-10"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[50px] max-h-[150px] resize-none pr-10"
             placeholder="Type a message..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isUploading}
+            style={{fontSize: '16px'}} // Prevents iOS zoom on focus
           />
         </div>
         
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           <input
             type="file"
             accept="image/*"
@@ -145,37 +146,34 @@ const MessageInput: React.FC<MessageInputProps> = ({
             onChange={(e) => handleFileSelect(e, 'image')}
             disabled={isUploading}
           />
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            <Image className="h-5 w-5" />
-          </Button>
           
-          <Button variant="ghost" size="icon" type="button">
-            <Video className="h-5 w-5" />
-          </Button>
-          
-          <Button variant="ghost" size="icon" type="button">
-            <Mic className="h-5 w-5" />
-          </Button>
-          
-          <Button
-            variant="default"
-            size="icon"
-            type="button"
-            disabled={(!message.trim() && !previewUrl) || isUploading}
-            onClick={handleSendMessage}
-          >
-            {isUploading ? (
-              <span className="animate-spin">⏳</span>
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </Button>
+          <div className="flex sm:flex-row flex-col">
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-8 w-8"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              <Image className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="default"
+              size="icon"
+              type="button"
+              disabled={(!message.trim() && !previewUrl) || isUploading}
+              onClick={handleSendMessage}
+              className="h-8 w-8"
+            >
+              {isUploading ? (
+                <span className="animate-spin">⏳</span>
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

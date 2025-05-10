@@ -13,6 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { users as usersApi, conversations as conversationsApi } from '@/lib/convex';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useChannel } from '@/contexts/ChannelContext';
 
 interface UserSearchResult {
   id: string;
@@ -49,13 +51,19 @@ const ConversationList: React.FC<ConversationListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddFriend, setShowAddFriend] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [username, setUsername] = useState('');
+  const [groupName, setGroupName] = useState('');
+  const [groupDescription, setGroupDescription] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<UserSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const { toast } = useToast();
   const { setCurrentConversation, refreshConversations } = useChat();
+  const { createChannel } = useChannel();
   const { user } = useAuth();
 
   const filteredConversations = conversations.filter(conversation => 
@@ -146,8 +154,77 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }
   };
 
+  const handleCreateGroup = async () => {
+    if (selectedUsers.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one user to add to the group",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!groupName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a group name",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setIsCreatingChannel(true);
+      
+      // Create a new student channel
+      const memberIds = selectedUsers.map(user => user.id);
+      
+      // Create the channel through the ChannelContext
+      const channelId = await createChannel(
+        groupName,
+        groupDescription,
+        "TEXT",
+        true, // Always private
+        undefined, // No student groups
+        memberIds
+      );
+      
+      if (channelId) {
+        toast({
+          title: "Group Created",
+          description: `You've successfully created the group "${groupName}"`
+        });
+        
+        // Close the dialog and reset form
+        setShowCreateGroup(false);
+        setGroupName('');
+        setGroupDescription('');
+        setSelectedUsers([]);
+        setSearchResults([]);
+        setUsername('');
+      }
+    } catch (error: any) {
+      console.error('Error creating group:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create group",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingChannel(false);
+    }
+  };
+
   const selectUser = (user: UserSearchResult) => {
     setSelectedUser(user);
+  };
+
+  const toggleSelectUser = (user: UserSearchResult) => {
+    if (selectedUsers.some(u => u.id === user.id)) {
+      setSelectedUsers(selectedUsers.filter(u => u.id !== user.id));
+    } else {
+      setSelectedUsers([...selectedUsers, user]);
+    }
   };
 
   return (
@@ -244,6 +321,25 @@ const ConversationList: React.FC<ConversationListProps> = ({
       </div>
       
       <div className="p-3 sm:p-4 border-t">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Add
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setShowAddFriend(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Friend
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowCreateGroup(true)}>
+              <Users className="h-4 w-4 mr-2" />
+              Create Group
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <Dialog open={showAddFriend} onOpenChange={(open) => {
           setShowAddFriend(open);
           if (!open) {
@@ -252,12 +348,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
             setSelectedUser(null);
           }
         }}>
-          <DialogTrigger asChild>
-            <Button className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Friend
-            </Button>
-          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Find Users</DialogTitle>
@@ -285,7 +375,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
               {!isSearching && searchResults.length > 0 && (
                 <div className="space-y-2">
                   <Label>Search Results</Label>
-                  <ScrollArea className="h-[200px] border rounded-md">
+                  <ScrollArea className="h-[150px] border rounded-md">
                     <div className="p-2 space-y-2">
                       {searchResults.map(user => (
                         <div
@@ -346,6 +436,131 @@ const ConversationList: React.FC<ConversationListProps> = ({
               >
                 <UserPlus className="h-4 w-4" />
                 {isCreatingChat ? 'Starting chat...' : (selectedUser ? `Chat with ${selectedUser.username}` : 'Start Chat')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showCreateGroup} onOpenChange={(open) => {
+          setShowCreateGroup(open);
+          if (!open) {
+            setGroupName('');
+            setGroupDescription('');
+            setUsername('');
+            setSearchResults([]);
+            setSelectedUsers([]);
+          }
+        }}>
+          <DialogContent className="sm:max-w-[485px]">
+            <DialogHeader>
+              <DialogTitle>Create Group</DialogTitle>
+              <DialogDescription>
+                Create a new group and add members to it.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="groupName">Group Name</Label>
+                <Input
+                  id="groupName"
+                  placeholder="Enter group name"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="groupDescription">Description (Optional)</Label>
+                <Input
+                  id="groupDescription"
+                  placeholder="Enter group description"
+                  value={groupDescription}
+                  onChange={(e) => setGroupDescription(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="addMembers">Add Members</Label>
+                <Input
+                  id="addMembers"
+                  placeholder="Search by username (min 3 characters)"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+              
+              {isSearching && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              )}
+              
+              {!isSearching && searchResults.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Search Results</Label>
+                  <ScrollArea className="h-[150px] border rounded-md">
+                    <div className="p-2 space-y-2">
+                      {searchResults.map(user => (
+                        <div
+                          key={user.id}
+                          className={cn(
+                            "flex items-center p-2 rounded-md cursor-pointer hover:bg-muted transition-colors",
+                            selectedUsers.some(u => u.id === user.id) ? "bg-primary/10" : ""
+                          )}
+                          onClick={() => toggleSelectUser(user)}
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={user.profilePicture ? `${user.profilePicture}?v=${user.profilePictureVersion || 1}` : undefined} />
+                            <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div className="ml-3">
+                            <div className="font-medium">{user.username}</div>
+                          </div>
+                          {selectedUsers.some(u => u.id === user.id) && (
+                            <div className="ml-auto">
+                              <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center">
+                                <div className="h-3 w-3 rounded-full bg-primary"></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+              
+              {!isSearching && username.length >= 3 && searchResults.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No users found with that username
+                </div>
+              )}
+              
+              {selectedUsers.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Selected Members ({selectedUsers.length})</Label>
+                  <div className="border rounded-md p-3 bg-muted/30 flex flex-wrap gap-2">
+                    {selectedUsers.map(user => (
+                      <div key={user.id} className="flex items-center bg-background rounded-full pl-1 pr-2 py-1">
+                        <Avatar className="h-6 w-6 mr-1">
+                          <AvatarImage src={user.profilePicture ? `${user.profilePicture}?v=${user.profilePictureVersion || 1}` : undefined} />
+                          <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{user.username}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button 
+                onClick={handleCreateGroup} 
+                disabled={!groupName || selectedUsers.length === 0 || isCreatingChannel}
+                className="gap-2"
+              >
+                <Users className="h-4 w-4" />
+                {isCreatingChannel ? 'Creating Group...' : 'Create Group'}
               </Button>
             </DialogFooter>
           </DialogContent>

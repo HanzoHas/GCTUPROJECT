@@ -24,6 +24,7 @@ interface Post {
   tags: string[];
   comments?: Comment[];
   image?: string;
+  liked?: boolean;
 }
 
 interface Comment {
@@ -36,6 +37,7 @@ interface Comment {
   };
   createdAt: number;
   upvotes: number;
+  liked?: boolean;
 }
 
 const TrendingView = () => {
@@ -154,7 +156,13 @@ const TrendingView = () => {
 
   const handleUpvotePost = async (postId: string) => {
     try {
-      await trending.upvotePost(postId);
+      const response = await trending.upvotePost(postId);
+      
+      if (!response.success && response.reason === "already_liked") {
+        // Optional: Show a message that the user already liked this post
+        return;
+      }
+      
       // Refresh posts to show updated upvote count
       const fetchedPosts = await trending.getPosts();
       setPosts(fetchedPosts || []);
@@ -165,7 +173,13 @@ const TrendingView = () => {
 
   const handleUpvoteComment = async (commentId: string) => {
     try {
-      await trending.upvoteComment(commentId);
+      const response = await trending.upvoteComment(commentId);
+      
+      if (!response.success && response.reason === "already_liked") {
+        // Optional: Show a message that the user already liked this comment
+        return;
+      }
+      
       // Refresh posts to show updated upvote count on the comment
       const fetchedPosts = await trending.getPosts();
       setPosts(fetchedPosts || []);
@@ -353,10 +367,11 @@ const TrendingView = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="flex items-center space-x-1"
+                  className={`flex items-center space-x-1 ${post.liked ? 'text-primary' : ''}`}
                   onClick={() => handleUpvotePost(post.id)}
+                  disabled={post.liked}
                 >
-                  <ThumbsUp className="h-4 w-4" />
+                  <ThumbsUp className={`h-4 w-4 ${post.liked ? 'fill-current' : ''}`} />
                   <span>{post.upvotes}</span>
                 </Button>
                 <Button
@@ -397,10 +412,11 @@ const TrendingView = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="mt-1"
+                            className={`mt-1 ${comment.liked ? 'text-primary' : ''}`}
                             onClick={() => handleUpvoteComment(comment.id)}
+                            disabled={comment.liked}
                           >
-                            <ThumbsUp className="h-4 w-4 mr-1" />
+                            <ThumbsUp className={`h-4 w-4 mr-1 ${comment.liked ? 'fill-current' : ''}`} />
                             {comment.upvotes}
                           </Button>
                         </div>

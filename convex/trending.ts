@@ -67,6 +67,24 @@ export const getPosts = query({
       .query("posts")
       .order("desc")
       .collect();
+      
+    // Get user's likes for all posts
+    const userLikes = await ctx.db
+      .query("postLikes")
+      .withIndex("by_user", q => q.eq("userId", userId))
+      .collect();
+      
+    // Create a set of post IDs that the user has liked
+    const likedPostIds = new Set(userLikes.map(like => like.postId));
+    
+    // Get user's comment likes
+    const userCommentLikes = await ctx.db
+      .query("commentLikes")
+      .withIndex("by_user", q => q.eq("userId", userId))
+      .collect();
+      
+    // Create a set of comment IDs that the user has liked
+    const likedCommentIds = new Set(userCommentLikes.map(like => like.commentId));
 
     // Get author details for each post
     const postsWithAuthors = await Promise.all(
@@ -103,6 +121,8 @@ export const getPosts = query({
           commentCount: post.commentCount,
           tags: post.tags,
           image: post.image,
+          // Add liked status for the current user
+          liked: likedPostIds.has(post._id),
           comments: comments.map((comment) => ({
             id: comment._id,
             content: comment.content,
@@ -115,6 +135,8 @@ export const getPosts = query({
             },
             createdAt: comment.createdAt,
             upvotes: comment.upvotes,
+            // Add liked status for the comment
+            liked: likedCommentIds.has(comment._id),
           })),
         };
       })
@@ -177,6 +199,25 @@ export const upvotePost = mutation({
       throw new ConvexError("Post not found");
     }
 
+    // Check if user has already liked this post
+    const existingLike = await ctx.db
+      .query("postLikes")
+      .withIndex("by_post_user", q => q.eq("postId", postId).eq("userId", userId))
+      .first();
+
+    if (existingLike) {
+      // User has already liked this post
+      return { success: false, reason: "already_liked" };
+    }
+
+    // Record the like
+    await ctx.db.insert("postLikes", {
+      postId,
+      userId,
+      timestamp: Date.now(),
+    });
+
+    // Update post upvote count
     await ctx.db.patch(postId, {
       upvotes: (post.upvotes || 0) + 1,
     });
@@ -199,7 +240,26 @@ export const upvoteComment = mutation({
     if (!comment) {
       throw new ConvexError("Comment not found");
     }
+    
+    // Check if user has already liked this comment
+    const existingLike = await ctx.db
+      .query("commentLikes")
+      .withIndex("by_comment_user", q => q.eq("commentId", commentId).eq("userId", userId))
+      .first();
 
+    if (existingLike) {
+      // User has already liked this comment
+      return { success: false, reason: "already_liked" };
+    }
+
+    // Record the like
+    await ctx.db.insert("commentLikes", {
+      commentId,
+      userId,
+      timestamp: Date.now(),
+    });
+
+    // Update comment upvote count
     await ctx.db.patch(commentId, {
       upvotes: (comment.upvotes || 0) + 1,
     });

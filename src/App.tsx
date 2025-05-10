@@ -7,6 +7,7 @@ import { ChatProvider } from "./contexts/ChatContext";
 import { AnnouncementProvider } from "./contexts/AnnouncementContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { ZegoProvider } from "./contexts/ZegoContext";
+import { ChannelProvider } from "./contexts/ChannelContext";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes";
 
@@ -18,11 +19,13 @@ const App = () => (
           <AnnouncementProvider>
             <SettingsProvider>
               <ZegoProvider>
+                <ChannelProvider>
                 <TooltipProvider>
                   <AppRoutes />
                   <Toaster />
                   <Sonner />
                 </TooltipProvider>
+                </ChannelProvider>
               </ZegoProvider>
             </SettingsProvider>
           </AnnouncementProvider>

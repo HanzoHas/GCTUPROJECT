@@ -9,6 +9,7 @@ import AnnouncementsView from '../views/AnnouncementsView';
 import ProfileView from '../views/ProfileView';
 import SettingsView from '../views/SettingsView';
 import TrendingView from '../views/TrendingView';
+import ChannelsView from '../views/ChannelsView';
 import { Button } from '../ui/button';
 
 const AppLayout = () => {
@@ -48,6 +49,10 @@ const AppLayout = () => {
         return <ProfileView />;
       case 'settings':
         return <SettingsView />;
+      case 'channels':
+      case 'lecturer-channels':
+      case 'student-channels':
+        return <ChannelsView />;
       default:
         return (
           <div className="h-full flex items-center justify-center">

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
-import { ChevronDown, Home, Users, MessageSquare, User, Settings, Search, Plus, Menu, X, TrendingUp } from 'lucide-react';
+import { useChannel } from '@/contexts/ChannelContext';
+import { ChevronDown, Home, Users, MessageSquare, User, Settings, Search, Plus, Menu, X, TrendingUp, Book, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -58,8 +59,10 @@ interface AppSidebarProps {
 const AppSidebar = ({ open, activeView, onChangeView, onToggleSidebar }: AppSidebarProps) => {
   const { user } = useAuth();
   const { conversations, setCurrentConversation } = useChat();
+  const { userIsLecturer, lecturerChannels, userChannels } = useChannel();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [channelsExpanded, setChannelsExpanded] = useState(true);
   
   // Check for mobile screens
   useEffect(() => {
@@ -146,7 +149,7 @@ const AppSidebar = ({ open, activeView, onChangeView, onToggleSidebar }: AppSide
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search friends..."
+              placeholder="Search..."
               className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -172,6 +175,42 @@ const AppSidebar = ({ open, activeView, onChangeView, onToggleSidebar }: AppSide
               active={activeView === 'trending'}
               onClick={() => handleNavItemClick('trending')}
             />
+            
+            {/* Study Channels Section */}
+            <SidebarItem
+              icon={<Book className="h-5 w-5" />}
+              label="Study Channels"
+              active={activeView === 'channels'}
+              hasSubMenu={true}
+              expanded={channelsExpanded}
+              onClick={() => {
+                setChannelsExpanded(!channelsExpanded);
+                if (!channelsExpanded) {
+                  handleNavItemClick('channels');
+                }
+              }}
+            />
+            
+            {channelsExpanded && (
+              <div className="pl-8 space-y-1 mt-1">
+                {userIsLecturer && (
+                  <SidebarItem
+                    icon={<GraduationCap className="h-4 w-4" />}
+                    label="My Lecture Channels"
+                    active={activeView === 'lecturer-channels'}
+                    onClick={() => handleNavItemClick('lecturer-channels')}
+                  />
+                )}
+                
+                <SidebarItem
+                  icon={<Users className="h-4 w-4" />}
+                  label="My Channels"
+                  active={activeView === 'student-channels'}
+                  onClick={() => handleNavItemClick('student-channels')}
+                />
+              </div>
+            )}
+            
             <SidebarItem
               icon={<User className="h-5 w-5" />}
               label="Profile"
