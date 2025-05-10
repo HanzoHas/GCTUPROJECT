@@ -189,22 +189,19 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   // Get the session token
   const sessionToken = useMemo(() => getSessionToken(), []);
   
-  // Fetch conversations using regular API call instead of useQuery
+  // Fetch conversations using useQuery
+  const conversationsData = useQuery(
+    api.conversations.getUserConversations,
+    isAuthenticated ? { sessionToken } : { sessionToken: "" as any, _skipQuery: true }
+  );
+
   useEffect(() => {
-    if (isAuthenticated && sessionToken) {
-      setIsLoadingConversations(true);
-      conversationsApi.getUserConversations()
-        .then(data => {
-          setConversations(data);
-        })
-        .catch(error => {
-          console.error('Error fetching conversations:', error);
-        })
-        .finally(() => {
-          setIsLoadingConversations(false);
-        });
+    if (isAuthenticated && conversationsData) {
+      setConversations(Array.isArray(conversationsData) ? conversationsData : []);
+    } else {
+      setConversations([]);
     }
-  }, [isAuthenticated, sessionToken]);
+  }, [isAuthenticated, conversationsData]);
   
   // Start typing indicator
   const startTyping = useCallback(() => {

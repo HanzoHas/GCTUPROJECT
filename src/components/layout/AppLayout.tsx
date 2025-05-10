@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu } from 'lucide-react';
+import { Menu, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import AppNavbar from './AppNavbar';
 import AppSidebar from './AppSidebar';
@@ -8,7 +8,7 @@ import ChatView from '../views/ChatView';
 import AnnouncementsView from '../views/AnnouncementsView';
 import ProfileView from '../views/ProfileView';
 import SettingsView from '../views/SettingsView';
-import GroupChatView from '../views/GroupChatView';
+import TrendingView from '../views/TrendingView';
 import { Button } from '../ui/button';
 
 const AppLayout = () => {
@@ -42,18 +42,26 @@ const AppLayout = () => {
         return <AnnouncementsView />;
       case 'chats':
         return <ChatView />;
+      case 'trending':
+        return <TrendingView />;
       case 'profile':
         return <ProfileView />;
       case 'settings':
         return <SettingsView />;
-      case 'group-math':
-        return <GroupChatView groupId="2" groupName="Math Study Group" />;
-      case 'group-science':
-        return <GroupChatView groupId="science" groupName="Science Club" />;
-      case 'group-history':
-        return <GroupChatView groupId="history" groupName="History Discussion" />;
       default:
-        return <AnnouncementsView />;
+        return (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center mb-4 bg-muted h-16 w-16 rounded-full">
+                <MessageSquare className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Select a conversation</h3>
+              <p className="text-muted-foreground">
+                Choose a chat from the sidebar to start messaging.
+              </p>
+            </div>
+          </div>
+        );
     }
   };
 

@@ -34,8 +34,12 @@ const getConversationDisplayName = (conversation: any, currentUserId: string | u
   }
   
   // For direct conversations, show only the other user's name
+  if (!conversation.members || !Array.isArray(conversation.members)) {
+    return conversation.name || 'Unnamed Conversation';
+  }
+  
   const otherMember = conversation.members.find((member: any) => member.id !== currentUserId);
-  return otherMember ? otherMember.username : conversation.name;
+  return otherMember ? otherMember.username : conversation.name || 'Unnamed Conversation';
 };
 
 const ConversationList: React.FC<ConversationListProps> = ({

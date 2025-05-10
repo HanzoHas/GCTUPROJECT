@@ -20,6 +20,7 @@ import type * as conversations from "../conversations.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as settings from "../settings.js";
+import type * as trending from "../trending.js";
 import type * as users from "../users.js";
 import type * as utils_auth from "../utils/auth.js";
 import type * as utils_mediaService from "../utils/mediaService.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   notifications: typeof notifications;
   settings: typeof settings;
+  trending: typeof trending;
   users: typeof users;
   "utils/auth": typeof utils_auth;
   "utils/mediaService": typeof utils_mediaService;

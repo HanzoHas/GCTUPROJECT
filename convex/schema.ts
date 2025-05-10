@@ -167,7 +167,8 @@ export default defineSchema({
       v.literal("groupInvite"),
       v.literal("announcement"),
       v.literal("groupJoinRequest"),
-      v.literal("groupJoinApproved")
+      v.literal("groupJoinApproved"),
+      v.literal("call")
     ),
     read: v.boolean(),
     title: v.string(),
@@ -178,8 +179,14 @@ export default defineSchema({
       v.literal("conversation"),
       v.literal("message"),
       v.literal("announcement"),
-      v.literal("joinRequest")
+      v.literal("joinRequest"),
+      v.literal("call")
     )),
+    callData: v.optional(v.object({
+      callType: v.union(v.literal("audio"), v.literal("video")),
+      roomId: v.string(),
+      callerName: v.string()
+    })),
   })
   .index("by_user", ["userId"])
   .index("by_user_read", ["userId", "read"])
@@ -248,4 +255,28 @@ export default defineSchema({
     updatedAt: v.string(),
   })
   .index("by_user", ["userId"]),
+
+  posts: defineTable({
+    title: v.string(),
+    content: v.string(),
+    authorId: v.id("users"),
+    createdAt: v.number(),
+    upvotes: v.number(),
+    commentCount: v.number(),
+    tags: v.array(v.string()),
+    image: v.optional(v.string()),
+  }).index("by_author", ["authorId"])
+    .index("by_post_creation_time", ["createdAt"]),
+
+  comments: defineTable({
+    postId: v.id("posts"),
+    content: v.string(),
+    authorId: v.id("users"),
+    authorUsername: v.string(),
+    authorProfilePicture: v.optional(v.string()),
+    createdAt: v.number(),
+    upvotes: v.number(),
+  }).index("by_post", ["postId"])
+    .index("by_author", ["authorId"])
+    .index("by_comment_creation_time", ["createdAt"]),
 }); 

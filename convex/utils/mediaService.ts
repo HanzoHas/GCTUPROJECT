@@ -109,3 +109,26 @@ export const deleteMedia = action({
     }
   },
 }); 
+
+// Helper function to store an image from a data URL
+export const storeImage = async (
+  ctx: any,
+  userId: string,
+  imageData: string
+): Promise<string> => {
+  try {
+    // Generate a unique folder name using the userId
+    const folder = `chatter-school-connect/users/${userId}/posts`;
+    
+    // Upload the image to Cloudinary
+    const result = await ctx.runAction(uploadMedia, {
+      base64Data: imageData,
+      folder,
+    });
+    
+    return result.url;
+  } catch (error) {
+    console.error("Image storage error:", error);
+    throw new ConvexError("Failed to store image");
+  }
+}; 

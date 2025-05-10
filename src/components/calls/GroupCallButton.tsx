@@ -1,63 +1,79 @@
 import React from 'react';
+import { Button } from '@/components/ui/button';
 import { Users, Video } from 'lucide-react';
-import { Button } from '../ui/button';
 import { useZego } from '@/contexts/ZegoContext';
-import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface GroupCallButtonProps {
   groupId: string;
   groupName: string;
-  variant?: 'outline' | 'secondary' | 'default' | 'destructive' | 'ghost';
   showText?: boolean;
-  className?: string;
+  size?: 'default' | 'sm' | 'lg';
 }
 
-const GroupCallButton = ({
+const GroupCallButton: React.FC<GroupCallButtonProps> = ({
   groupId,
   groupName,
-  variant = 'outline',
   showText = false,
-  className,
-}: GroupCallButtonProps) => {
-  const { joinGroupCall, isInCall } = useZego();
-  const { toast } = useToast();
-
-  const handleGroupCall = () => {
-    if (isInCall) {
-      toast({
-        title: 'Already in a call',
-        description: 'Please end your current call before starting a new one.',
-        variant: 'destructive',
-      });
+  size = 'default'
+}) => {
+  const { joinCall } = useZego();
+  
+  const handleClick = () => {
+    if (!groupId || groupId.trim() === '') {
+      // Button should be disabled anyway, no need for error message
       return;
     }
-
-    try {
-      joinGroupCall(groupId, groupName);
-      toast({
-        title: 'Group call initiated',
-        description: `Joining ${groupName} group call...`,
-      });
-    } catch (error) {
-      console.error('Group call error:', error);
-      toast({
-        title: 'Group call failed',
-        description: 'Could not join group call. Please try again.',
-        variant: 'destructive',
-      });
-    }
+    
+    // Create a room ID that includes the group ID for consistency
+    const roomId = `group_${groupId}_${Date.now()}`;
+    joinCall(roomId, 'video');
   };
-
+  
+  const sizeClasses = {
+    default: 'h-8 w-8',
+    sm: 'h-6 w-6',
+    lg: 'h-10 w-10'
+  };
+  
+  const iconSize = {
+    default: 'h-4 w-4',
+    sm: 'h-3 w-3',
+    lg: 'h-5 w-5'
+  };
+  
   return (
-    <Button
-      variant={variant}
-      className={`${showText ? 'gap-2' : 'aspect-square p-2'} ${className}`}
-      onClick={handleGroupCall}
-      title={`Join ${groupName} group call`}
-    >
-      <Users size={18} />
-      {showText && 'Join Group Call'}
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {showText ? (
+            <Button
+              variant="outline"
+              onClick={handleClick}
+              className="flex items-center gap-2"
+              disabled={!groupId}
+            >
+              <Users className="h-4 w-4" />
+              Join Group Call
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleClick}
+              className={cn("rounded-full", sizeClasses[size])}
+              disabled={!groupId}
+            >
+              <Users className={iconSize[size]} />
+            </Button>
+          )}
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Join Group Video Call</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

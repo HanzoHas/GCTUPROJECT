@@ -100,24 +100,57 @@ const ChatView = () => {
 
   // Function to get the display name for a conversation
   const getConversationDisplayName = (conversation: Conversation) => {
+    // If it's explicitly a group conversation
     if (conversation.isGroup) {
       return conversation.name;
     }
     
     // For direct conversations, show only the other user's name
+    if (!conversation.members || !Array.isArray(conversation.members)) {
+      // If the name contains "&", it might be a combined name - extract just the other person
+      if (conversation.name && conversation.name.includes('&')) {
+        const names = conversation.name.split('&').map(name => name.trim());
+        // Try to find a name that doesn't match the current user's username
+        const otherName = names.find(name => name !== user?.username);
+        return otherName || conversation.name || 'Unnamed Conversation';
+      }
+      return conversation.name || 'Unnamed Conversation';
+    }
+    
     const otherMember = conversation.members.find(member => member.id !== user?.id);
-    return otherMember ? otherMember.username : conversation.name;
+    return otherMember ? otherMember.username : conversation.name || 'Unnamed Conversation';
   };
 
   // Function to get the recipient ID for calls in direct conversations
   const getRecipientId = (conversation: Conversation) => {
+    // Remove debug logging that's cluttering the console
     if (conversation.isGroup) {
       return conversation.id;
     }
     
-    // For direct conversations, get the other user's ID
+    // Check if the conversation has an otherMember property first (from direct API responses)
+    // Using bracket notation to safely access properties that might not be in the type definition
+    const otherMemberProperty = conversation as Record<string, any>;
+    if (otherMemberProperty['otherMember'] && 
+        typeof otherMemberProperty['otherMember'] === 'object' && 
+        otherMemberProperty['otherMember']['id']) {
+      return otherMemberProperty['otherMember']['id'];
+    }
+    
+    // For direct conversations, get the other user's ID from members array
+    if (!conversation.members || !Array.isArray(conversation.members) || conversation.members.length === 0) {
+      // Silently use conversation ID as fallback without logging
+      return conversation.id;
+    }
+    
     const otherMember = conversation.members.find(member => member.id !== user?.id);
-    return otherMember ? otherMember.id : conversation.id;
+    
+    if (!otherMember) {
+      // Silently use conversation ID as fallback without logging
+      return conversation.id;
+    }
+    
+    return otherMember.id;
   };
 
   return (
@@ -170,22 +203,18 @@ const ChatView = () => {
             <div className="flex items-center space-x-1">
               {!currentConversation.isGroup && (
                 <>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <VideoCallButton 
-                      recipientId={getRecipientId(currentConversation)}
-                      recipientName={getConversationDisplayName(currentConversation)}
-                      variant="audio"
-                      size="sm"
-                    />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <VideoCallButton 
-                      recipientId={getRecipientId(currentConversation)}
-                      recipientName={getConversationDisplayName(currentConversation)}
-                      variant="video"
-                      size="sm"
-                    />
-                  </Button>
+                  <VideoCallButton 
+                    recipientId={getRecipientId(currentConversation)}
+                    recipientName={getConversationDisplayName(currentConversation)}
+                    variant="audio"
+                    size="sm"
+                  />
+                  <VideoCallButton 
+                    recipientId={getRecipientId(currentConversation)}
+                    recipientName={getConversationDisplayName(currentConversation)}
+                    variant="video"
+                    size="sm"
+                  />
                 </>
               )}
               <Sheet>
@@ -259,18 +288,21 @@ const ChatView = () => {
                           {/* Contact info */}
                           <div className="w-full mb-6">
                             <h4 className="font-medium mb-2">Contact Info</h4>
-                            {currentConversation.members
-                              .filter(member => member.id !== user?.id)
-                              .map(member => (
-                                <div key={member.id} className="p-2 rounded-md">
-                                  <div className="font-medium">{member.username}</div>
-                                  <div className="flex items-center text-sm text-muted-foreground">
-                                    <span className={member.status === 'Available' ? 'online-indicator' : 'offline-indicator'} style={{ marginRight: '0.375rem' }}></span>
-                                    <span>{member.status}</span>
+                            {currentConversation.members && Array.isArray(currentConversation.members) ? (
+                              currentConversation.members
+                                .filter(member => member.id !== user?.id)
+                                .map(member => (
+                                  <div key={member.id} className="p-2 rounded-md">
+                                    <div className="font-medium">{member.username}</div>
+                                    <div className="flex items-center text-sm text-muted-foreground">
+                                      <span className={member.status === 'Available' ? 'online-indicator' : 'offline-indicator'} style={{ marginRight: '0.375rem' }}></span>
+                                      <span>{member.status}</span>
+                                    </div>
                                   </div>
-                                </div>
-                              ))
-                            }
+                                ))
+                            ) : (
+                              <div className="text-sm text-muted-foreground">No contact information available</div>
+                            )}
                           </div>
                         </div>
                       </>
@@ -336,11 +368,13 @@ const ChatView = () => {
                 
                 <div className="flex items-center space-x-2">
                   {currentConversation.isGroup ? (
-                    <GroupCallButton 
-                      groupId={currentConversation.id}
-                      groupName={getConversationDisplayName(currentConversation)}
-                      showText={false}
-                    />
+                    <>
+                      {/* Group call button */}
+                      <GroupCallButton 
+                        groupId={currentConversation.id}
+                        groupName={getConversationDisplayName(currentConversation)}
+                      />
+                    </>
                   ) : (
                     <>
                       <VideoCallButton 
@@ -427,18 +461,21 @@ const ChatView = () => {
                               {/* Contact info */}
                               <div className="w-full mb-6">
                                 <h4 className="font-medium mb-2">Contact Info</h4>
-                                {currentConversation.members
-                                  .filter(member => member.id !== user?.id)
-                                  .map(member => (
-                                    <div key={member.id} className="p-2 rounded-md">
-                                      <div className="font-medium">{member.username}</div>
-                                      <div className="flex items-center text-sm text-muted-foreground">
-                                        <span className={member.status === 'Available' ? 'online-indicator' : 'offline-indicator'} style={{ marginRight: '0.375rem' }}></span>
-                                        <span>{member.status}</span>
+                                {currentConversation.members && Array.isArray(currentConversation.members) ? (
+                                  currentConversation.members
+                                    .filter(member => member.id !== user?.id)
+                                    .map(member => (
+                                      <div key={member.id} className="p-2 rounded-md">
+                                        <div className="font-medium">{member.username}</div>
+                                        <div className="flex items-center text-sm text-muted-foreground">
+                                          <span className={member.status === 'Available' ? 'online-indicator' : 'offline-indicator'} style={{ marginRight: '0.375rem' }}></span>
+                                          <span>{member.status}</span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))
-                                }
+                                    ))
+                                ) : (
+                                  <div className="text-sm text-muted-foreground">No contact information available</div>
+                                )}
                               </div>
                             </div>
                           </>
@@ -494,7 +531,7 @@ const ChatView = () => {
             <div className="p-4 border-t">
               <MessageInput 
                 onSendMessage={handleSendMessage}
-                replyTo={replyingTo}
+                replyingTo={replyingTo}
                 onCancelReply={() => setReplyingTo(null)}
               />
             </div>

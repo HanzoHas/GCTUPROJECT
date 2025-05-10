@@ -51,7 +51,7 @@
     "cloudinary": "^2.6.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
-    "convex": "^1.23.0",
+    "convex": "^1.24.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
     "framer-motion": "^12.9.2",

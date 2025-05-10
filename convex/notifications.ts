@@ -123,7 +123,8 @@ export const createNotification = mutation({
       v.literal("groupInvite"),
       v.literal("announcement"),
       v.literal("groupJoinRequest"),
-      v.literal("groupJoinApproved")
+      v.literal("groupJoinApproved"),
+      v.literal("call")
     ),
     title: v.string(),
     content: v.string(),
@@ -132,8 +133,14 @@ export const createNotification = mutation({
       v.literal("conversation"),
       v.literal("message"),
       v.literal("announcement"),
-      v.literal("joinRequest")
+      v.literal("joinRequest"),
+      v.literal("call")
     )),
+    callData: v.optional(v.object({
+      callType: v.union(v.literal("audio"), v.literal("video")),
+      roomId: v.string(),
+      callerName: v.string()
+    })),
   },
   handler: async (ctx, args) => {
     // Check if user exists
@@ -184,8 +191,110 @@ export const createNotification = mutation({
       read: false,
       sourceId: args.sourceId,
       sourceType: args.sourceType,
+      callData: args.callData,
     });
     
     return { success: true, notificationId };
+  },
+});
+
+// Send a call notification to a user
+export const sendCallNotification = mutation({
+  args: {
+    sessionToken: sessionTokenValidator,
+    targetUserId: v.string(),
+    callType: v.union(v.literal("audio"), v.literal("video")),
+    roomId: v.string(),
+    callerName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user, userId } = await getAuthenticatedUser(ctx, args.sessionToken);
+    
+    try {
+      console.log("Received targetUserId:", args.targetUserId);
+      
+      // Skip attempting to normalize if ID is empty
+      if (!args.targetUserId || args.targetUserId.trim() === '') {
+        throw new ConvexError("Invalid or empty target user ID");
+      }
+      
+      // First try to normalize the ID to ensure it's in the correct format
+      let targetUserId;
+      try {
+        targetUserId = ctx.db.normalizeId("users", args.targetUserId);
+      } catch (error) {
+        console.log("Could not normalize ID:", args.targetUserId);
+      }
+      
+      // If we have a normalized ID, try to get the user directly
+      let targetUser = null;
+      if (targetUserId) {
+        targetUser = await ctx.db.get(targetUserId);
+      }
+      
+      // If direct lookup failed, try querying
+      if (!targetUser) {
+        console.log("Direct lookup failed, trying query");
+        
+        // Try looking up by _id
+        const targetUserById = await ctx.db
+          .query("users")
+          .filter(q => q.eq(q.field("_id"), args.targetUserId))
+          .first();
+          
+        if (targetUserById) {
+          targetUser = targetUserById;
+        } else {
+          // Try looking up by username
+          const targetUserByUsername = await ctx.db
+            .query("users")
+            .filter(q => q.eq(q.field("username"), args.targetUserId))
+            .first();
+            
+          if (targetUserByUsername) {
+            targetUser = targetUserByUsername;
+          }
+        }
+      }
+      
+      // Final check - we need a valid user
+      if (!targetUser) {
+        console.log("No user found for ID:", args.targetUserId);
+        throw new ConvexError("Target user not found");
+      }
+      
+      console.log("Found target user:", targetUser._id);
+      
+      // Create notification content based on call type
+      const callType = args.callType === "video" ? "Video" : "Audio";
+      const callerName = args.callerName || (user?.username || "User");
+      
+      // Add notification with type assertions to satisfy TypeScript
+      const notificationId = await ctx.db.insert("notifications", {
+        userId: targetUser._id,
+        // Type must be one of the allowed values in the schema
+        type: "call" as any,
+        title: `Incoming ${callType} Call`,
+        content: `${callerName} is calling you`,
+        timestamp: Date.now(),
+        read: false,
+        sourceId: args.roomId,
+        // SourceType must be one of the allowed values in the schema
+        sourceType: "call" as any,
+        callData: {
+          callType: args.callType,
+          roomId: args.roomId,
+          callerName: callerName
+        },
+      });
+      
+      return { success: true, notificationId };
+    } catch (error) {
+      console.error("Error sending call notification:", error);
+      if (error instanceof ConvexError) {
+        throw error;
+      }
+      throw new ConvexError("Failed to send call notification");
+    }
   },
 }); 

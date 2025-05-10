@@ -87,58 +87,55 @@ const SettingsView = () => {
     const file = files[0];
     
     try {
-      // Create temporary preview immediately
+      // Create a temporary preview immediately
       const objectUrl = URL.createObjectURL(file);
       setProfilePicture(objectUrl);
       
-      // Create form data
-      const formData = new FormData();
-      formData.append('file', file);
+      // Convert to base64 for Convex upload
+      const reader = new FileReader();
       
-      // Using unsigned upload - make sure this upload preset exists and is set to "unsigned"
-      const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
-      formData.append('upload_preset', uploadPreset);
+      const imageDataPromise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      });
       
-      // Upload to Cloudinary
-      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'connect-learn-now';
+      const imageData = await imageDataPromise;
       
-      const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
-      
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.error?.message || 'Upload failed');
-      }
-      
-      const data = await uploadResponse.json();
-      if (!data.secure_url) throw new Error('Upload failed: No secure URL returned');
-      
-      // Clean up temporary preview
-      URL.revokeObjectURL(objectUrl);
-      
-      // Update local state with the cloudinary URL
-      const cloudinaryUrl = data.secure_url + '?t=' + new Date().getTime(); // Add cache busting
-      setProfilePicture(cloudinaryUrl);
-      
-      // Update user profile with new image URL
+      // Update user profile with base64 data
       const result = await users.updateProfile({
-        profilePicture: data.secure_url,
+        profilePicture: imageData,
       });
       
       if (result.success) {
+        // Refresh user to get the updated profile data
+        await refreshUser();
+        
+        // Clean up temporary blob URL after successful upload and refresh
+        URL.revokeObjectURL(objectUrl);
+        
+        // Use the URL from the refreshed user data with cache busting
+        const updatedUser = await users.getProfile();
+        if (updatedUser?.profilePicture) {
+          const timestamp = new Date().getTime();
+          const cacheBustedUrl = updatedUser.profilePicture.includes('?')
+            ? `${updatedUser.profilePicture}&t=${timestamp}`
+            : `${updatedUser.profilePicture}?t=${timestamp}`;
+          setProfilePicture(cacheBustedUrl);
+        }
+        
         toast({
           title: 'Success',
           description: 'Profile picture updated successfully',
         });
-        await refreshUser();
       }
     } catch (error: any) {
       console.error('Error uploading image:', error);
+      // Clean up any temporary blob URL on error
+      if (profilePicture && profilePicture.startsWith('blob:')) {
+        URL.revokeObjectURL(profilePicture);
+      }
       toast({
         title: 'Error',
         description: error.message || 'Failed to upload profile picture',
@@ -205,9 +202,13 @@ const SettingsView = () => {
                   <Avatar className="h-32 w-32">
                     {profilePicture ? (
                       <AvatarImage 
-                        src={profilePicture.includes('?') ? profilePicture : `${profilePicture}?v=${user?.profilePictureVersion || 1}`} 
+                        src={profilePicture} 
                         alt={user?.username} 
-                        key={profilePicture}
+                        key={user?.profilePictureVersion || Date.now()}
+                        onError={(e) => {
+                          console.log('Error loading profile image, falling back to initials');
+                          setProfilePicture(undefined);
+                        }}
                       />
                     ) : (
                       <AvatarFallback className="text-3xl">

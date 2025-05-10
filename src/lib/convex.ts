@@ -279,157 +279,9 @@ export const messages = {
 
 // Conversations API functions
 export const conversations = {
-  createOneOnOne: async (otherUserId: string) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return null;
-
-    return convex.mutation(api.conversations.createOneOnOneConversation, {
-      sessionToken,
-      otherUserId,
-    });
-  },
-
-  createOrGetDirectConversation: async (otherUserId: string) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return null;
-
-    return convex.mutation(api.conversations.createOrGetDirectConversation, {
-      sessionToken,
-      otherUserId,
-    });
-  },
-
-  createGroup: async (
-    name: string,
-    isPrivate: boolean,
-    initialMemberIds: string[],
-    avatar?: string,
-    wallpaper?: string
-  ) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return null;
-
-    return convex.mutation(api.conversations.createGroupConversation, {
-      sessionToken,
-      name,
-      isPrivate,
-      initialMemberIds,
-      avatar,
-      wallpaper,
-    });
-  },
-
-  getUserConversations: async () => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return [];
-
-    return convex.query(api.conversations.getUserConversations, {
-      sessionToken,
-    });
-  },
-
-  getConversationDetails: async (conversationId: string) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return null;
-
-    return convex.query(api.conversations.getConversationDetails, {
-      sessionToken,
-      conversationId,
-    });
-  },
-
-  updateConversation: async (
-    conversationId: string,
-    updates: {
-      name?: string;
-      avatar?: string;
-      wallpaper?: string;
-    }
-  ) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return { success: false };
-
-    return convex.mutation(api.conversations.updateConversation, {
-      sessionToken,
-      conversationId,
-      ...updates,
-    });
-  },
-
-  removeMember: async (conversationId: string, memberId: string) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return { success: false };
-
-    return convex.mutation(api.conversations.removeMember, {
-      sessionToken,
-      conversationId,
-      memberId,
-    });
-  },
-
-  toggleAdminStatus: async (
-    conversationId: string,
-    memberId: string,
-    isAdmin: boolean
-  ) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return { success: false };
-
-    return convex.mutation(api.conversations.toggleAdminStatus, {
-      sessionToken,
-      conversationId,
-      memberId,
-      isAdmin,
-    });
-  },
-
-  leaveConversation: async (conversationId: string) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return { success: false };
-
-    return convex.mutation(api.conversations.leaveConversation, {
-      sessionToken,
-      conversationId,
-    });
-  },
-
-  requestToJoinGroup: async (conversationId: string) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return { success: false };
-
-    return convex.mutation(api.conversations.requestToJoinGroup, {
-      sessionToken,
-      conversationId,
-    });
-  },
-
-  handleJoinRequest: async (requestId: string, approve: boolean) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return { success: false };
-
-    return convex.mutation(api.conversations.handleJoinRequest, {
-      sessionToken,
-      requestId,
-      approve,
-    });
-  },
-
-  toggleMute: async (conversationId: string, isMuted: boolean) => {
-    const sessionToken = getSessionToken();
-    if (!sessionToken) return { success: false };
-
-    return convex.mutation(api.conversations.toggleMute, {
-      sessionToken,
-      conversationId,
-      isMuted,
-    });
-  },
-
-  list: () => useQuery(api.conversations.list),
-  get: (id: string) => useQuery(api.conversations.get, { id }),
-  create: () => useMutation(api.conversations.create),
-  createGroup: (name: string, isPrivate: boolean, members: string[], avatar?: string) => 
-    useMutation(api.conversations.createGroup, { name, isPrivate, members, avatar }),
+  createOneOnOne: async (otherUserId: string) => 
+    useMutation(api.conversations.createOneOnOne, { otherUserId }),
+  getUserConversations: () => useQuery(api.conversations.getUserConversations),
   update: (id: string, updates: any) => useMutation(api.conversations.update, { id, updates }),
   delete: (id: string) => useMutation(api.conversations.delete, { id }),
 };
@@ -542,6 +394,22 @@ export const notifications = {
       sessionToken,
     });
   },
+
+  // Add function to send call notifications
+  sendCallNotification: async (params: {
+    targetUserId: string;
+    callType: 'audio' | 'video';
+    roomId: string;
+    callerName?: string;
+  }) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return { success: false };
+
+    return convex.mutation(api.notifications.sendCallNotification, {
+      sessionToken,
+      ...params
+    });
+  }
 };
 
 // User activity API functions
@@ -561,4 +429,80 @@ export const activities = {
 export const settings = {
   get: () => useQuery(api.settings.get),
   update: (settings: any) => useMutation(api.settings.update, { settings }),
+};
+
+// Trending API functions
+export const trending = {
+  getPosts: async () => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return [];
+
+    return convex.query(api.trending.getPosts, {
+      sessionToken,
+    });
+  },
+
+  uploadImage: async (imageData: string) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return null;
+
+    return convex.mutation(api.trending.uploadImage, {
+      sessionToken,
+      imageData,
+    });
+  },
+
+  createPost: async (title: string, content: string, tags: string[], image?: string | null) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return null;
+
+    return convex.mutation(api.trending.createPost, {
+      sessionToken,
+      title,
+      content,
+      tags,
+      image,
+    });
+  },
+
+  deletePost: async (postId: string) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return { success: false };
+
+    return convex.mutation(api.trending.deletePost, {
+      sessionToken,
+      postId,
+    });
+  },
+
+  createComment: async (postId: string, content: string) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return null;
+
+    return convex.mutation(api.trending.createComment, {
+      sessionToken,
+      postId,
+      content,
+    });
+  },
+
+  upvotePost: async (postId: string) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return { success: false };
+
+    return convex.mutation(api.trending.upvotePost, {
+      sessionToken,
+      postId,
+    });
+  },
+
+  upvoteComment: async (commentId: string) => {
+    const sessionToken = getSessionToken();
+    if (!sessionToken) return { success: false };
+
+    return convex.mutation(api.trending.upvoteComment, {
+      sessionToken,
+      commentId,
+    });
+  },
 }; 

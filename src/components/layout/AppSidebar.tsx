@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
-import { ChevronDown, Home, Users, MessageSquare, User, Settings, Search, Plus, Menu, X } from 'lucide-react';
+import { ChevronDown, Home, Users, MessageSquare, User, Settings, Search, Plus, Menu, X, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import CreateGroupDialog from '@/components/CreateGroupDialog';
 import { conversations as conversationsApi } from '@/lib/convex';
 
 interface SidebarItemProps {
@@ -59,10 +58,7 @@ interface AppSidebarProps {
 const AppSidebar = ({ open, activeView, onChangeView, onToggleSidebar }: AppSidebarProps) => {
   const { user } = useAuth();
   const { conversations, setCurrentConversation } = useChat();
-  const [studyGroupsExpanded, setStudyGroupsExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [groupConversations, setGroupConversations] = useState<any[]>([]);
-  const [showCreateGroupDialog, setShowCreateGroupDialog] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   
   // Check for mobile screens
@@ -74,20 +70,6 @@ const AppSidebar = ({ open, activeView, onChangeView, onToggleSidebar }: AppSide
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
-  // Filter conversations to find groups
-  useEffect(() => {
-    const groups = conversations.filter(conversation => conversation.isGroup);
-    setGroupConversations(groups);
-  }, [conversations]);
-  
-  const handleGroupSelect = (conversation: any) => {
-    setCurrentConversation(conversation);
-    onChangeView('chats');
-    if (isMobile) {
-      onToggleSidebar();
-    }
-  };
 
   // For mobile: close sidebar when selecting an item
   const handleNavItemClick = (view: string) => {
@@ -184,74 +166,12 @@ const AppSidebar = ({ open, activeView, onChangeView, onToggleSidebar }: AppSide
               active={activeView === 'chats'}
               onClick={() => handleNavItemClick('chats')}
             />
-            
             <SidebarItem
-              icon={<Users className="h-5 w-5" />}
-              label="Study Groups"
-              active={activeView.startsWith('group-')}
-              hasSubMenu={true}
-              expanded={studyGroupsExpanded}
-              onClick={() => setStudyGroupsExpanded(!studyGroupsExpanded)}
-              rightContent={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 ml-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCreateGroupDialog(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              }
+              icon={<TrendingUp className="h-5 w-5" />}
+              label="Trending"
+              active={activeView === 'trending'}
+              onClick={() => handleNavItemClick('trending')}
             />
-            
-            <AnimatePresence>
-              {studyGroupsExpanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden pl-6"
-                >
-                  <div className="py-1 space-y-1">
-                    {groupConversations.length > 0 ? (
-                      groupConversations.map(group => (
-                        <div
-                          key={group.id}
-                          className={cn(
-                            'px-3 py-2 text-sm rounded-md cursor-pointer flex items-center',
-                            group.id === (activeView.startsWith('group-') ? activeView.substring(6) : '') 
-                              ? 'bg-primary/10 text-primary' 
-                              : 'text-foreground hover:bg-gray-100 dark:hover:bg-gray-800'
-                          )}
-                          onClick={() => handleGroupSelect(group)}
-                        >
-                          <Avatar className="h-5 w-5 mr-2">
-                            <AvatarImage src={group.avatar} />
-                            <AvatarFallback className="text-xs">
-                              {group.name.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate">{group.name}</span>
-                          {group.unreadCount > 0 && (
-                            <span className="ml-auto h-5 w-5 bg-primary rounded-full flex items-center justify-center text-xs text-white">
-                              {group.unreadCount}
-                            </span>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">
-                        No study groups yet
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            
             <SidebarItem
               icon={<User className="h-5 w-5" />}
               label="Profile"
@@ -270,13 +190,6 @@ const AppSidebar = ({ open, activeView, onChangeView, onToggleSidebar }: AppSide
         <div className="p-4 border-t text-center">
           <div className="text-xs text-muted-foreground">ConnectLearnNow</div>
         </div>
-        
-        {showCreateGroupDialog && (
-          <CreateGroupDialog
-            open={showCreateGroupDialog}
-            onOpenChange={setShowCreateGroupDialog}
-          />
-        )}
       </motion.aside>
     </>
   );

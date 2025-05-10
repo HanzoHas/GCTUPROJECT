@@ -3,6 +3,25 @@ import { v } from "convex/values";
 import { api } from "../_generated/api";
 import { CloudinaryUploadResult } from "./mediaService";
 
+// Helper function to upload media for other modules
+export async function uploadMediaAction(
+  ctx: any, 
+  args: { base64Data: string; folder?: string }
+): Promise<CloudinaryUploadResult> {
+  // If the input is already a URL, just return it
+  if (args.base64Data.startsWith("http")) {
+    return {
+      url: args.base64Data,
+      publicId: args.base64Data,
+      resourceType: "image",
+      format: "png"
+    };
+  }
+
+  // Use the existing uploadMediaSync mutation
+  return await ctx.runMutation(uploadMediaSync, args);
+}
+
 // Public wrapper mutation that can be called from other mutations
 export const uploadMediaSync = mutation({
   args: {
