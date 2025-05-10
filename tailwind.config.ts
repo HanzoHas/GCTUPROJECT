@@ -74,11 +74,11 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				chat: {
-					sent: '#0A2463',
-					received: '#7CB9E8',
+					sent: '#1E88E5',
+					received: '#F5F9FF',
 					online: '#4CAF50',
 					offline: '#9e9e9e',
-					typing: '#FFA000',
+					typing: '#64B5F6',
 				}
 			},
 			boxShadow: {

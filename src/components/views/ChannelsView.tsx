@@ -699,13 +699,13 @@ const ChannelsView = () => {
           <p className="mb-2">
             {isTeachingView ? "No teaching channels" : "No channels available"}
           </p>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setIsCreatingChannel(true)}
-          >
-            <Plus className="h-4 w-4 mr-1" /> Create Channel
-          </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsCreatingChannel(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Create Channel
+            </Button>
         </div>
       );
     }
@@ -713,31 +713,31 @@ const ChannelsView = () => {
     return (
       <div className="space-y-1">
         {channels.map(channel => (
-          <div 
-            key={channel._id.toString()} 
-            className={`p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-accent/50 ${
-              currentChannel?._id === channel._id ? 'bg-accent text-accent-foreground' : ''
-            }`}
-            onClick={() => {
-              setCurrentChannel(channel);
-              setCurrentSubchannel(null);
+      <div 
+        key={channel._id.toString()} 
+        className={`p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-accent/50 ${
+          currentChannel?._id === channel._id ? 'bg-accent text-accent-foreground' : ''
+        }`}
+        onClick={() => {
+          setCurrentChannel(channel);
+          setCurrentSubchannel(null);
               // On mobile, navigate to subchannels view when a channel is selected
               if (window.innerWidth < 768) {
                 setMobileView('subchannels');
               }
-            }}
-          >
+        }}
+      >
             <Avatar className="h-8 w-8 flex-shrink-0">
-              <AvatarImage src={channel.avatar} />
-              <AvatarFallback>{channel.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 overflow-hidden">
-              <div className="font-medium truncate">{channel.name}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {channel.description || 'No description'}
-              </div>
-            </div>
+          <AvatarImage src={channel.avatar} />
+          <AvatarFallback>{channel.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 overflow-hidden">
+          <div className="font-medium truncate">{channel.name}</div>
+          <div className="text-xs text-muted-foreground truncate">
+            {channel.description || 'No description'}
           </div>
+        </div>
+      </div>
         ))}
       </div>
     );
@@ -756,13 +756,13 @@ const ChannelsView = () => {
         <div className="text-center py-4 text-muted-foreground">
           <p className="mb-2">No subchannels found</p>
           {userIsLecturer && currentChannel.lecturerId.toString() === user?.id && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setIsCreatingSubchannel(true)}
-            >
-              <Plus className="h-4 w-4 mr-1" /> Create Subchannel
-            </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsCreatingSubchannel(true)}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Create Subchannel
+              </Button>
           )}
         </div>
       );
@@ -786,7 +786,7 @@ const ChannelsView = () => {
           >
             <div className="flex items-center gap-2">
               <Hash className="h-4 w-4 text-muted-foreground" />
-              <div className="font-medium">{subchannel.name}</div>
+            <div className="font-medium">{subchannel.name}</div>
             </div>
             {subchannel.description && (
               <div className="text-xs text-muted-foreground ml-6">{subchannel.description}</div>
@@ -809,8 +809,8 @@ const ChannelsView = () => {
       return (
         <div className="text-center py-16 text-muted-foreground">
           Select a channel to view content
-        </div>
-      );
+      </div>
+    );
     }
     
     // If subchannel is selected and it's a text type, show the chat interface
@@ -874,7 +874,7 @@ const ChannelsView = () => {
                 onClick={() => setIsCreatingAnnouncement(true)}
               >
                 <Plus className="h-4 w-4 mr-1" /> Create Announcement
-              </Button>
+                </Button>
             )}
           </div>
         ) : (
@@ -885,7 +885,7 @@ const ChannelsView = () => {
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-base sm:text-lg">{announcement.title}</CardTitle>
                     {(user?.id === announcement.author.id || 
-                      (userIsLecturer && currentChannel.lecturerId.toString() === user?.id)) && (
+                     (userIsLecturer && currentChannel.lecturerId.toString() === user?.id)) && (
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -981,13 +981,13 @@ const ChannelsView = () => {
               )}
               
               <div className="mt-8 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={handleSetAsLecturer}
+        <Button
+          variant="outline"
+          onClick={handleSetAsLecturer}
                   className="w-full mb-2"
-                >
+        >
                   Set As Lecturer
-                </Button>
+        </Button>
                 <Button
                   variant="outline"
                   onClick={handleForceRefetch}
@@ -995,12 +995,12 @@ const ChannelsView = () => {
                 >
                   Refresh Channels
                 </Button>
-              </div>
-            </div>
+                </div>
+                </div>
           </SheetContent>
         </Sheet>
-      </div>
-
+                </div>
+                
       <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 h-[calc(100vh-5rem)]">
         {/* Channel List - Only visible on desktop or when on channels tab in mobile */}
         <div className={`md:col-span-3 border-b md:border-r md:border-b-0 pb-2 md:pb-0 pr-0 md:pr-4 ${mobileView !== 'channels' ? 'hidden md:block' : ''}`}>
@@ -1012,14 +1012,14 @@ const ChannelsView = () => {
                 <li className="mb-1">Verify your Convex environment variables</li>
                 <li>Try refreshing the page</li>
               </ol>
-              <Button 
-                variant="outline" 
+                  <Button 
+                    variant="outline" 
                 size="sm" 
                 className="mt-2 w-full"
-                onClick={handleRefreshChannels}
-              >
-                Refresh Page
-              </Button>
+                    onClick={handleRefreshChannels}
+                  >
+                    Refresh Page
+                  </Button>
             </div>
           )}
           
@@ -1037,14 +1037,14 @@ const ChannelsView = () => {
                 <div className="space-y-2 pr-4">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-semibold text-lg">All Channels</h3>
-                    <Button
-                      size="sm"
+                  <Button 
+                    size="sm" 
                       onClick={() => setIsCreatingChannel(true)}
-                    >
+                  >
                       <Plus className="h-4 w-4 mr-1" /> New
-                    </Button>
-                  </div>
-                  
+                  </Button>
+                </div>
+                
                   {isLoadingChannels ? (
                     <div className="text-center py-8">
                       <div className="inline-block animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
@@ -1063,23 +1063,23 @@ const ChannelsView = () => {
                   <div className="space-y-2 pr-4">
                     <div className="flex justify-between items-center mb-2">
                       <h3 className="font-semibold text-lg">Teaching Channels</h3>
-                      <Button
-                        size="sm"
+                  <Button 
+                    size="sm" 
                         onClick={() => setIsCreatingChannel(true)}
-                      >
+                  >
                         <Plus className="h-4 w-4 mr-1" /> New
-                      </Button>
-                    </div>
+                  </Button>
+                </div>
                     
                     {isLoadingChannels ? (
                       <div className="text-center py-8">
                         <div className="inline-block animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
                         <p className="mt-2 text-sm text-muted-foreground">Loading teaching channels...</p>
-                      </div>
+              </div>
                     ) : (
                       renderChannelItems(lecturerChannels)
                     )}
-                  </div>
+      </div>
                 </ScrollArea>
               </TabsContent>
             )}
@@ -1089,14 +1089,14 @@ const ChannelsView = () => {
                 <div className="space-y-2 pr-4">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-semibold text-lg">My Channels</h3>
-                    <Button
+              <Button 
                       size="sm"
-                      onClick={() => setIsCreatingChannel(true)}
-                    >
+                onClick={() => setIsCreatingChannel(true)}
+              >
                       <Plus className="h-4 w-4 mr-1" /> New
-                    </Button>
-                  </div>
-                  
+              </Button>
+          </div>
+          
                   {isLoadingChannels ? (
                     <div className="text-center py-8">
                       <div className="inline-block animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
@@ -1110,7 +1110,7 @@ const ChannelsView = () => {
             </TabsContent>
           </Tabs>
         </div>
-        
+
         {/* Subchannel List - Only visible on desktop or when on subchannels tab in mobile */}
         <div className={`md:col-span-2 border-b md:border-r md:border-b-0 pb-2 md:pb-0 pr-0 md:pr-4 flex flex-col ${mobileView !== 'subchannels' ? 'hidden md:block' : ''} ${!currentChannel && 'md:block hidden'}`}>
           <div className="flex justify-between items-center mb-3">

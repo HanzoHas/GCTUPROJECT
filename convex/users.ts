@@ -365,4 +365,63 @@ export const setCurrentUserAsLecturer = mutation({
     
     return { success: true };
   },
+});
+
+// Subscribe to user status
+export const subscribeToUserStatus = query({
+  args: {
+    sessionToken: sessionTokenValidator,
+    userIds: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Authenticate the requesting user
+    const { user, userId } = await getAuthenticatedUser(
+      ctx,
+      args.sessionToken
+    );
+
+    // Convert all string IDs to Convex ID type
+    const userIdsTyped = args.userIds.map(id => id as unknown as Id<"users">);
+    
+    // Get users and their statuses
+    const userStatuses = await Promise.all(
+      userIdsTyped.map(async (id) => {
+        try {
+          const targetUser = await ctx.db.get(id);
+          
+          // Skip if user not found or has blocked the current user
+          if (!targetUser || targetUser.blockedUsers.includes(userId.toString())) {
+            return null;
+          }
+          
+          // Get presence information
+          const presence = await ctx.db
+            .query("presence")
+            .withIndex("by_user", (q) => q.eq("userId", id))
+            .first();
+            
+          // Get user settings to check if they want to show online status
+          const settings = await ctx.db
+            .query("settings")
+            .withIndex("by_user", (q) => q.eq("userId", id))
+            .first();
+            
+          const showOnlineStatus = settings ? settings.onlineStatus : true;
+          
+          return {
+            userId: targetUser._id,
+            username: targetUser.username,
+            status: targetUser.status,
+            isOnline: showOnlineStatus ? (presence?.isOnline || false) : false,
+            lastSeen: showOnlineStatus ? presence?.lastSeen : null,
+          };
+        } catch (error) {
+          return null;
+        }
+      })
+    );
+    
+    // Filter out null values (users that weren't found or blocked the requestor)
+    return userStatuses.filter(status => status !== null);
+  },
 }); 

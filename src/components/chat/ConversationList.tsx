@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Users, User, Plus, Clock, UserPlus, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useChannel } from '@/contexts/ChannelContext';
+import { useUserStatus } from '@/hooks/useUserStatus';
 
 interface UserSearchResult {
   id: string;
@@ -72,6 +73,40 @@ const ConversationList: React.FC<ConversationListProps> = ({
       member.username.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
+
+  // Extract user IDs from all conversations for status tracking
+  const userIdsToTrack = useMemo(() => {
+    const ids: string[] = [];
+    conversations.forEach(conversation => {
+      if (!conversation.isGroup) {
+        // For direct conversations, add the other user's ID
+        const otherMember = conversation.members.find(member => member.id !== user?.id);
+        if (otherMember) {
+          ids.push(otherMember.id);
+        }
+      }
+    });
+    return ids;
+  }, [conversations, user?.id]);
+
+  // Subscribe to real-time status updates
+  const { statuses, isLoading: statusesLoading } = useUserStatus(userIdsToTrack);
+  
+  // Create a lookup map for faster status access
+  const userStatusMap = useMemo(() => {
+    const map: Record<string, { status: string; isOnline: boolean }> = {};
+    if (statuses && Array.isArray(statuses)) {
+      statuses.forEach(status => {
+        if (status && status.userId) {
+          map[status.userId] = { 
+            status: status.status,
+            isOnline: status.isOnline
+          };
+        }
+      });
+    }
+    return map;
+  }, [statuses]);
 
   // Search for users when the username input changes
   useEffect(() => {
@@ -244,69 +279,85 @@ const ConversationList: React.FC<ConversationListProps> = ({
       
       <div className="flex-1 overflow-y-auto p-2">
         {filteredConversations.length > 0 ? (
-          filteredConversations.map((conversation) => (
-            <motion.div
-              key={conversation.id}
-              whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.05)' }}
-              whileTap={{ scale: 0.98 }}
-              className={cn(
-                'flex items-center p-3 rounded-md cursor-pointer',
-                currentConversation?.id === conversation.id ? 'bg-primary/10' : ''
-              )}
-              onClick={() => onSelectConversation(conversation)}
-            >
-              <div className="relative">
-                {conversation.isGroup ? (
-                  <div className="h-10 w-10 bg-muted rounded-full flex items-center justify-center">
-                    <Users className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                ) : (
-                  <Avatar>
-                    <AvatarImage src={conversation.avatar} />
-                    <AvatarFallback>{getConversationDisplayName(conversation, user?.id).substring(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+          filteredConversations.map((conversation) => {
+            // Determine online status for direct conversations
+            let isOnline = conversation.online;
+            let statusText = '';
+            
+            if (!conversation.isGroup) {
+              const otherMember = conversation.members.find(member => member.id !== user?.id);
+              if (otherMember && userStatusMap && userStatusMap[otherMember.id]) {
+                isOnline = userStatusMap[otherMember.id].isOnline;
+                statusText = userStatusMap[otherMember.id].status;
+              }
+            }
+            
+            return (
+              <motion.div
+                key={conversation.id}
+                whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.05)' }}
+                whileTap={{ scale: 0.98 }}
+                className={cn(
+                  'flex items-center p-3 rounded-md cursor-pointer',
+                  currentConversation?.id === conversation.id ? 'bg-primary/10' : ''
                 )}
-                {conversation.online && (
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
-                )}
-              </div>
-              
-              <div className="ml-3 flex-1 min-w-0">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium truncate">{getConversationDisplayName(conversation, user?.id)}</span>
-                  {conversation.lastMessage?.timestamp && (
-                    <span className="text-xs text-muted-foreground whitespace-nowrap ml-2 flex items-center">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {formatDistanceToNow(new Date(conversation.lastMessage.timestamp), { addSuffix: false })}
-                    </span>
+                onClick={() => onSelectConversation(conversation)}
+              >
+                <div className="relative">
+                  {conversation.isGroup ? (
+                    <div className="h-10 w-10 bg-muted rounded-full flex items-center justify-center">
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Avatar>
+                      <AvatarImage src={conversation.avatar} />
+                      <AvatarFallback>{getConversationDisplayName(conversation, user?.id).substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  {isOnline && (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
                   )}
                 </div>
                 
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-muted-foreground truncate max-w-[80%]">
-                    {conversation.typing ? (
-                      <div className="flex items-center">
-                        <span className="mr-1">{conversation.typing} is typing</span>
-                        <div className="typing-indicator">
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                        </div>
-                      </div>
-                    ) : (
-                      conversation.lastMessage?.content || 'No messages yet'
+                <div className="ml-3 flex-1 min-w-0">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium truncate">{getConversationDisplayName(conversation, user?.id)}</span>
+                    {conversation.lastMessage?.timestamp && (
+                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2 flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {formatDistanceToNow(new Date(conversation.lastMessage.timestamp), { addSuffix: false })}
+                      </span>
                     )}
                   </div>
                   
-                  {conversation.unreadCount > 0 && (
-                    <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-1">
-                      {conversation.unreadCount}
-                    </span>
-                  )}
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-muted-foreground truncate max-w-[80%]">
+                      {conversation.typing ? (
+                        <div className="flex items-center">
+                          <span className="mr-1">{conversation.typing} is typing</span>
+                          <div className="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </div>
+                        </div>
+                      ) : statusText && !conversation.isGroup ? (
+                        <span className="text-xs text-muted-foreground">{statusText}</span>
+                      ) : (
+                        conversation.lastMessage?.content || 'No messages yet'
+                      )}
+                    </div>
+                    
+                    {conversation.unreadCount > 0 && (
+                      <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-1">
+                        {conversation.unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))
+              </motion.div>
+            );
+          })
         ) : (
           <div className="h-full flex flex-col items-center justify-center p-4 text-center">
             <div className="bg-muted rounded-full p-3 mb-3">
