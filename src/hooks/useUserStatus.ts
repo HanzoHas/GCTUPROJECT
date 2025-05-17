@@ -1,5 +1,5 @@
 import { useQuery } from "convex/react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { api } from "@/lib/convex";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -18,33 +18,22 @@ interface UserStatus {
  */
 export function useUserStatus(userIds: string[]): {
   statuses: UserStatus[];
-  isLoading: boolean;
   error: Error | null;
 } {
-  const { sessionToken } = useAuth();
+  const { user } = useAuth();
   const [error, setError] = useState<Error | null>(null);
   
   // Filter out duplicate IDs and empty strings
   const uniqueUserIds = [...new Set(userIds.filter(id => id))];
   
-  // Only subscribe to status updates if we have a valid session token
+  // Only subscribe to status updates if we have a valid user
   const statuses = useQuery(
     api.users.subscribeToUserStatus,
-    sessionToken ? { 
-      sessionToken, 
-      userIds: uniqueUserIds 
-    } : "skip", // Skip the query if no valid session token
-    {
-      onError: (err) => {
-        console.error("Error fetching user statuses:", err);
-        setError(err);
-      }
-    }
+    user ? { userIds: uniqueUserIds } : "skip", // Skip the query if no valid user
   );
 
   return { 
     statuses: statuses || [], 
-    isLoading: sessionToken !== undefined && statuses === undefined,
     error 
   };
 }
@@ -56,14 +45,12 @@ export function useUserStatus(userIds: string[]): {
  */
 export function useSingleUserStatus(userId: string | undefined): {
   status: UserStatus | null;
-  isLoading: boolean;
   error: Error | null;
 } {
-  const { statuses, isLoading, error } = useUserStatus(userId ? [userId] : []);
+  const { statuses, error } = useUserStatus(userId ? [userId] : []);
   
   return {
     status: statuses && statuses.length > 0 ? statuses[0] : null,
-    isLoading,
     error
   };
 } 
