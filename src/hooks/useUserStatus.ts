@@ -20,16 +20,19 @@ export function useUserStatus(userIds: string[]): {
   statuses: UserStatus[];
   error: Error | null;
 } {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const [error, setError] = useState<Error | null>(null);
   
   // Filter out duplicate IDs and empty strings
   const uniqueUserIds = [...new Set(userIds.filter(id => id))];
   
-  // Only subscribe to status updates if we have a valid user
+  // Only subscribe to status updates if we have a valid user and session token
   const statuses = useQuery(
     api.users.subscribeToUserStatus,
-    user ? { userIds: uniqueUserIds } : "skip", // Skip the query if no valid user
+    user && sessionToken ? { 
+      sessionToken,
+      userIds: uniqueUserIds 
+    } : "skip"
   );
 
   return { 
