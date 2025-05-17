@@ -611,7 +611,7 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
         isStudentChannel,
       }}
     >
-      {isLoadingChannels && !channelError && (
+      {user && isLoadingChannels && !channelError && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="flex flex-col items-center space-y-4 text-center">
             <div className="flex h-10 w-10 animate-spin items-center justify-center rounded-full border-2 border-primary border-t-transparent">
