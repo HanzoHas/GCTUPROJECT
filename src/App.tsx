@@ -10,6 +10,7 @@ import { ZegoProvider } from "./contexts/ZegoContext";
 import { ChannelProvider } from "./contexts/ChannelContext";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes";
+import { FontLoader } from "@/components/FontLoader";
 
 const App = () => (
   <BrowserRouter>
@@ -21,6 +22,7 @@ const App = () => (
               <ZegoProvider>
                 <ChannelProvider>
                 <TooltipProvider>
+                  <FontLoader />
                   <AppRoutes />
                   <Toaster />
                   <Sonner />
