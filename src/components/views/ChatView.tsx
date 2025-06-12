@@ -191,11 +191,11 @@ const ChatView = () => {
             
             {/* Conversation List */}
             <div className="flex-1 overflow-hidden">
-              <ConversationList
-                conversations={conversations}
-                currentConversation={currentConversation}
-                onSelectConversation={handleSelectConversation}
-              />
+            <ConversationList
+              conversations={conversations}
+              currentConversation={currentConversation}
+              onSelectConversation={handleSelectConversation}
+            />
             </div>
           </motion.div>
         )}
@@ -416,14 +416,14 @@ const ChatView = () => {
               {messages.length > 0 ? (
                 <div className="space-y-4">
                   {messages.map((message) => (
-                    <ChatMessage
-                      key={message.id}
-                      message={message}
-                      isCurrentUser={message.senderId === user?.id}
-                      onReply={() => handleReply(message.id)}
-                      onDelete={deleteMessage}
-                      onReact={reactToMessage}
-                    />
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    isCurrentUser={message.senderId === user?.id}
+                    onReply={() => handleReply(message.id)}
+                    onDelete={deleteMessage}
+                    onReact={reactToMessage}
+                  />
                   ))}
                   <div ref={messagesEndRef} />
                 </div>

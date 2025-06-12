@@ -1,17 +1,17 @@
 import * as React from "react";
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      onClick={toggleTheme}
       className="relative overflow-hidden hover:bg-accent/10"
     >
       <motion.div

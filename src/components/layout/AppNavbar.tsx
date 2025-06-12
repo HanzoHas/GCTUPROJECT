@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Input } from "@/components/ui/input";
 import { useDebounce } from '@/hooks/use-debounce';
 import { CommandDialog } from '@/components/ui/command';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface AppNavbarProps {
   sidebarOpen: boolean;
@@ -130,7 +131,7 @@ const AppNavbar = ({ sidebarOpen, setSidebarOpen, setActiveView }: AppNavbarProp
           <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background animate-pulse"></span>
         </Button>
         
-        {/* Theme toggle removed */}
+        <ThemeToggle />
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
