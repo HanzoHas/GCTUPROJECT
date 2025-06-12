@@ -263,7 +263,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col border rounded-lg overflow-hidden bg-background">
+    <div className="h-full flex flex-col">
+      {/* Fixed Header */}
       <div className="p-3 sm:p-4 border-b">
         <h2 className="text-lg font-semibold mb-3">Conversations</h2>
         <div className="relative">
@@ -277,100 +278,104 @@ const ConversationList: React.FC<ConversationListProps> = ({
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-2">
-        {filteredConversations.length > 0 ? (
-          filteredConversations.map((conversation) => {
-            // Determine online status for direct conversations
-            let isOnline = conversation.online;
-            let statusText = '';
-            
-            if (!conversation.isGroup) {
-              const otherMember = conversation.members.find(member => member.id !== user?.id);
-              if (otherMember && userStatusMap && userStatusMap[otherMember.id]) {
-                isOnline = userStatusMap[otherMember.id].isOnline;
-                statusText = userStatusMap[otherMember.id].status;
+      {/* Scrollable Content Area */}
+      <ScrollArea className="flex-1">
+        <div className="p-2">
+          {filteredConversations.length > 0 ? (
+            filteredConversations.map((conversation) => {
+              // Determine online status for direct conversations
+              let isOnline = conversation.online;
+              let statusText = '';
+              
+              if (!conversation.isGroup) {
+                const otherMember = conversation.members.find(member => member.id !== user?.id);
+                if (otherMember && userStatusMap && userStatusMap[otherMember.id]) {
+                  isOnline = userStatusMap[otherMember.id].isOnline;
+                  statusText = userStatusMap[otherMember.id].status;
+                }
               }
-            }
-            
-            return (
-              <motion.div
-                key={conversation.id}
-                whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.05)' }}
-                whileTap={{ scale: 0.98 }}
-                className={cn(
-                  'flex items-center p-3 rounded-md cursor-pointer',
-                  currentConversation?.id === conversation.id ? 'bg-primary/10' : ''
-                )}
-                onClick={() => onSelectConversation(conversation)}
-              >
-                <div className="relative">
-                  {conversation.isGroup ? (
-                    <div className="h-10 w-10 bg-muted rounded-full flex items-center justify-center">
-                      <Users className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <Avatar>
-                      <AvatarImage src={conversation.avatar} />
-                      <AvatarFallback>{getConversationDisplayName(conversation, user?.id).substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+              
+              return (
+                <motion.div
+                  key={conversation.id}
+                  whileHover={{ backgroundColor: 'rgba(0, 0, 0, 0.05)' }}
+                  whileTap={{ scale: 0.98 }}
+                  className={cn(
+                    'flex items-center p-3 rounded-md cursor-pointer',
+                    currentConversation?.id === conversation.id ? 'bg-primary/10' : ''
                   )}
-                  {isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
-                  )}
-                </div>
-                
-                <div className="ml-3 flex-1 min-w-0">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium truncate">{getConversationDisplayName(conversation, user?.id)}</span>
-                    {conversation.lastMessage?.timestamp && (
-                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2 flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {formatDistanceToNow(new Date(conversation.lastMessage.timestamp), { addSuffix: false })}
-                      </span>
+                  onClick={() => onSelectConversation(conversation)}
+                >
+                  <div className="relative">
+                    {conversation.isGroup ? (
+                      <div className="h-10 w-10 bg-muted rounded-full flex items-center justify-center">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <Avatar>
+                        <AvatarImage src={conversation.avatar} />
+                        <AvatarFallback>{getConversationDisplayName(conversation, user?.id).substring(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                    )}
+                    {isOnline && (
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-background rounded-full"></span>
                     )}
                   </div>
                   
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-muted-foreground truncate max-w-[80%]">
-                      {conversation.typing ? (
-                        <div className="flex items-center">
-                          <span className="mr-1">{conversation.typing} is typing</span>
-                          <div className="typing-indicator">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                          </div>
-                        </div>
-                      ) : statusText && !conversation.isGroup ? (
-                        <span className="text-xs text-muted-foreground">{statusText}</span>
-                      ) : (
-                        conversation.lastMessage?.content || 'No messages yet'
+                  <div className="ml-3 flex-1 min-w-0">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium truncate">{getConversationDisplayName(conversation, user?.id)}</span>
+                      {conversation.lastMessage?.timestamp && (
+                        <span className="text-xs text-muted-foreground whitespace-nowrap ml-2 flex items-center">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatDistanceToNow(new Date(conversation.lastMessage.timestamp), { addSuffix: false })}
+                        </span>
                       )}
                     </div>
                     
-                    {conversation.unreadCount > 0 && (
-                      <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-1">
-                        {conversation.unreadCount}
-                      </span>
-                    )}
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-muted-foreground truncate max-w-[80%]">
+                        {conversation.typing ? (
+                          <div className="flex items-center">
+                            <span className="mr-1">{conversation.typing} is typing</span>
+                            <div className="typing-indicator">
+                              <span></span>
+                              <span></span>
+                              <span></span>
+                            </div>
+                          </div>
+                        ) : statusText && !conversation.isGroup ? (
+                          <span className="text-xs text-muted-foreground">{statusText}</span>
+                        ) : (
+                          conversation.lastMessage?.content || 'No messages yet'
+                        )}
+                      </div>
+                      
+                      {conversation.unreadCount > 0 && (
+                        <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full ml-1">
+                          {conversation.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            );
-          })
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center p-4 text-center">
-            <div className="bg-muted rounded-full p-3 mb-3">
-              <User className="h-6 w-6 text-muted-foreground" />
+                </motion.div>
+              );
+            })
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center p-4 text-center">
+              <div className="bg-muted rounded-full p-3 mb-3">
+                <User className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium mb-1">No conversations found</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {searchTerm ? 'Try a different search term' : 'Add a friend to start chatting'}
+              </p>
             </div>
-            <h3 className="font-medium mb-1">No conversations found</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {searchTerm ? 'Try a different search term' : 'Add a friend to start chatting'}
-            </p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </ScrollArea>
       
+      {/* Fixed Footer */}
       <div className="p-3 sm:p-4 border-t">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -390,233 +395,233 @@ const ConversationList: React.FC<ConversationListProps> = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
 
-        <Dialog open={showAddFriend} onOpenChange={(open) => {
-          setShowAddFriend(open);
-          if (!open) {
-            setUsername('');
-            setSearchResults([]);
-            setSelectedUser(null);
-          }
-        }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Find Users</DialogTitle>
-              <DialogDescription>
-                Search for a user by username to start a conversation.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Search Username</Label>
-                <Input
-                  id="username"
-                  placeholder="Enter username (min 3 characters)"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-              
-              {isSearching && (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              )}
-              
-              {!isSearching && searchResults.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Search Results</Label>
-                  <ScrollArea className="h-[150px] border rounded-md">
-                    <div className="p-2 space-y-2">
-                      {searchResults.map(user => (
-                        <div
-                          key={user.id}
-                          className={cn(
-                            "flex items-center p-2 rounded-md cursor-pointer hover:bg-muted transition-colors",
-                            selectedUser?.id === user.id ? "bg-primary/10" : ""
-                          )}
-                          onClick={() => selectUser(user)}
-                        >
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={user.profilePicture ? `${user.profilePicture}?v=${user.profilePictureVersion || 1}` : undefined} />
-                            <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <div className="ml-3">
-                            <div className="font-medium">{user.username}</div>
-                          </div>
-                          {selectedUser?.id === user.id && (
-                            <div className="ml-auto">
-                              <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center">
-                                <div className="h-3 w-3 rounded-full bg-primary"></div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              )}
-              
-              {!isSearching && username.length >= 3 && searchResults.length === 0 && (
-                <div className="text-center py-4 text-muted-foreground">
-                  No users found with that username
-                </div>
-              )}
-              
-              {selectedUser && (
-                <div className="border rounded-md p-3 bg-muted/30">
-                  <div className="text-sm font-medium mb-1">Selected User</div>
-                  <div className="flex items-center space-x-4">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedUser.profilePicture ? `${selectedUser.profilePicture}?v=${selectedUser.profilePictureVersion || 1}` : undefined} />
-                      <AvatarFallback>
-                        {selectedUser.username.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="ml-2 font-medium">{selectedUser.username}</div>
-                  </div>
-                </div>
-              )}
+      <Dialog open={showAddFriend} onOpenChange={(open) => {
+        setShowAddFriend(open);
+        if (!open) {
+          setUsername('');
+          setSearchResults([]);
+          setSelectedUser(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Find Users</DialogTitle>
+            <DialogDescription>
+              Search for a user by username to start a conversation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Search Username</Label>
+              <Input
+                id="username"
+                placeholder="Enter username (min 3 characters)"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
             </div>
-            <DialogFooter>
-              <Button 
-                onClick={handleAddFriend} 
-                disabled={!selectedUser || isCreatingChat}
-                className="gap-2"
-              >
-                <UserPlus className="h-4 w-4" />
-                {isCreatingChat ? 'Starting chat...' : (selectedUser ? `Chat with ${selectedUser.username}` : 'Start Chat')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showCreateGroup} onOpenChange={(open) => {
-          setShowCreateGroup(open);
-          if (!open) {
-            setGroupName('');
-            setGroupDescription('');
-            setUsername('');
-            setSearchResults([]);
-            setSelectedUsers([]);
-          }
-        }}>
-          <DialogContent className="sm:max-w-[485px]">
-            <DialogHeader>
-              <DialogTitle>Create Group</DialogTitle>
-              <DialogDescription>
-                Create a new group and add members to it.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="groupName">Group Name</Label>
-                <Input
-                  id="groupName"
-                  placeholder="Enter group name"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                />
+            
+            {isSearching && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
-              
+            )}
+            
+            {!isSearching && searchResults.length > 0 && (
               <div className="space-y-2">
-                <Label htmlFor="groupDescription">Description (Optional)</Label>
-                <Input
-                  id="groupDescription"
-                  placeholder="Enter group description"
-                  value={groupDescription}
-                  onChange={(e) => setGroupDescription(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="addMembers">Add Members</Label>
-                <Input
-                  id="addMembers"
-                  placeholder="Search by username (min 3 characters)"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-              
-              {isSearching && (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              )}
-              
-              {!isSearching && searchResults.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Search Results</Label>
-                  <ScrollArea className="h-[150px] border rounded-md">
-                    <div className="p-2 space-y-2">
-                      {searchResults.map(user => (
-                        <div
-                          key={user.id}
-                          className={cn(
-                            "flex items-center p-2 rounded-md cursor-pointer hover:bg-muted transition-colors",
-                            selectedUsers.some(u => u.id === user.id) ? "bg-primary/10" : ""
-                          )}
-                          onClick={() => toggleSelectUser(user)}
-                        >
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={user.profilePicture ? `${user.profilePicture}?v=${user.profilePictureVersion || 1}` : undefined} />
-                            <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <div className="ml-3">
-                            <div className="font-medium">{user.username}</div>
-                          </div>
-                          {selectedUsers.some(u => u.id === user.id) && (
-                            <div className="ml-auto">
-                              <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center">
-                                <div className="h-3 w-3 rounded-full bg-primary"></div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              )}
-              
-              {!isSearching && username.length >= 3 && searchResults.length === 0 && (
-                <div className="text-center py-4 text-muted-foreground">
-                  No users found with that username
-                </div>
-              )}
-              
-              {selectedUsers.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Selected Members ({selectedUsers.length})</Label>
-                  <div className="border rounded-md p-3 bg-muted/30 flex flex-wrap gap-2">
-                    {selectedUsers.map(user => (
-                      <div key={user.id} className="flex items-center bg-background rounded-full pl-1 pr-2 py-1">
-                        <Avatar className="h-6 w-6 mr-1">
+                <Label>Search Results</Label>
+                <ScrollArea className="h-[150px] border rounded-md">
+                  <div className="p-2 space-y-2">
+                    {searchResults.map(user => (
+                      <div
+                        key={user.id}
+                        className={cn(
+                          "flex items-center p-2 rounded-md cursor-pointer hover:bg-muted transition-colors",
+                          selectedUser?.id === user.id ? "bg-primary/10" : ""
+                        )}
+                        onClick={() => selectUser(user)}
+                      >
+                        <Avatar className="h-10 w-10">
                           <AvatarImage src={user.profilePicture ? `${user.profilePicture}?v=${user.profilePictureVersion || 1}` : undefined} />
                           <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium">{user.username}</span>
+                        <div className="ml-3">
+                          <div className="font-medium">{user.username}</div>
+                        </div>
+                        {selectedUser?.id === user.id && (
+                          <div className="ml-auto">
+                            <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center">
+                              <div className="h-3 w-3 rounded-full bg-primary"></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
+                </ScrollArea>
+              </div>
+            )}
+            
+            {!isSearching && username.length >= 3 && searchResults.length === 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                No users found with that username
+              </div>
+            )}
+            
+            {selectedUser && (
+              <div className="border rounded-md p-3 bg-muted/30">
+                <div className="text-sm font-medium mb-1">Selected User</div>
+                <div className="flex items-center space-x-4">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={selectedUser.profilePicture ? `${selectedUser.profilePicture}?v=${selectedUser.profilePictureVersion || 1}` : undefined} />
+                    <AvatarFallback>
+                      {selectedUser.username.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="ml-2 font-medium">{selectedUser.username}</div>
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleAddFriend} 
+              disabled={!selectedUser || isCreatingChat}
+              className="gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              {isCreatingChat ? 'Starting chat...' : (selectedUser ? `Chat with ${selectedUser.username}` : 'Start Chat')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateGroup} onOpenChange={(open) => {
+        setShowCreateGroup(open);
+        if (!open) {
+          setGroupName('');
+          setGroupDescription('');
+          setUsername('');
+          setSearchResults([]);
+          setSelectedUsers([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[485px]">
+          <DialogHeader>
+            <DialogTitle>Create Group</DialogTitle>
+            <DialogDescription>
+              Create a new group and add members to it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="groupName">Group Name</Label>
+              <Input
+                id="groupName"
+                placeholder="Enter group name"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+              />
             </div>
-            <DialogFooter>
-              <Button 
-                onClick={handleCreateGroup} 
-                disabled={!groupName || selectedUsers.length === 0 || isCreatingChannel}
-                className="gap-2"
-              >
-                <Users className="h-4 w-4" />
-                {isCreatingChannel ? 'Creating Group...' : 'Create Group'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="groupDescription">Description (Optional)</Label>
+              <Input
+                id="groupDescription"
+                placeholder="Enter group description"
+                value={groupDescription}
+                onChange={(e) => setGroupDescription(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="addMembers">Add Members</Label>
+              <Input
+                id="addMembers"
+                placeholder="Search by username (min 3 characters)"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+            
+            {isSearching && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
+            
+            {!isSearching && searchResults.length > 0 && (
+              <div className="space-y-2">
+                <Label>Search Results</Label>
+                <ScrollArea className="h-[150px] border rounded-md">
+                  <div className="p-2 space-y-2">
+                    {searchResults.map(user => (
+                      <div
+                        key={user.id}
+                        className={cn(
+                          "flex items-center p-2 rounded-md cursor-pointer hover:bg-muted transition-colors",
+                          selectedUsers.some(u => u.id === user.id) ? "bg-primary/10" : ""
+                        )}
+                        onClick={() => toggleSelectUser(user)}
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.profilePicture ? `${user.profilePicture}?v=${user.profilePictureVersion || 1}` : undefined} />
+                          <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="ml-3">
+                          <div className="font-medium">{user.username}</div>
+                        </div>
+                        {selectedUsers.some(u => u.id === user.id) && (
+                          <div className="ml-auto">
+                            <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center">
+                              <div className="h-3 w-3 rounded-full bg-primary"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+            
+            {!isSearching && username.length >= 3 && searchResults.length === 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                No users found with that username
+              </div>
+            )}
+            
+            {selectedUsers.length > 0 && (
+              <div className="space-y-2">
+                <Label>Selected Members ({selectedUsers.length})</Label>
+                <div className="border rounded-md p-3 bg-muted/30 flex flex-wrap gap-2">
+                  {selectedUsers.map(user => (
+                    <div key={user.id} className="flex items-center bg-background rounded-full pl-1 pr-2 py-1">
+                      <Avatar className="h-6 w-6 mr-1">
+                        <AvatarImage src={user.profilePicture ? `${user.profilePicture}?v=${user.profilePictureVersion || 1}` : undefined} />
+                        <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium">{user.username}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleCreateGroup} 
+              disabled={!groupName || selectedUsers.length === 0 || isCreatingChannel}
+              className="gap-2"
+            >
+              <Users className="h-4 w-4" />
+              {isCreatingChannel ? 'Creating Group...' : 'Create Group'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -134,13 +134,13 @@ const ChatView = () => {
   };
 
   return (
-    <div className="h-full bg-gradient-to-br from-background to-background/95 flex flex-col md:grid md:grid-cols-12 lg:grid-cols-10 gap-0 relative">
+    <div className="h-full bg-gradient-to-br from-background to-background/95 flex flex-col md:grid md:grid-cols-12 lg:grid-cols-10 gap-0 relative overflow-hidden">
       {/* Conversation List */}
       <AnimatePresence initial={false}>
         {showConversationList && (
           <motion.div 
             className={cn(
-              "w-full md:col-span-5 lg:col-span-3 h-full absolute md:relative z-20 bg-gradient-to-br from-background/95 to-background/90 backdrop-blur-md",
+              "w-full md:col-span-5 lg:col-span-3 h-full absolute md:relative z-20 bg-gradient-to-br from-background/95 to-background/90 backdrop-blur-md overflow-hidden flex flex-col",
               isMobile && "inset-0 border-r border-accent/10"
             )}
             initial={isMobile ? { x: -300, opacity: 0 } : { opacity: 1 }}
@@ -149,7 +149,7 @@ const ChatView = () => {
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
             {/* Conversation List Header */}
-            <div className="sticky top-0 z-10 p-4 backdrop-blur-md border-b border-accent/10 flex items-center justify-between">
+            <div className="flex-none sticky top-0 z-10 p-4 backdrop-blur-md border-b border-accent/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Avatar className="h-9 w-9 border-2 border-primary/20">
                   <AvatarImage src={user?.profilePicture || ''} />
@@ -177,7 +177,7 @@ const ChatView = () => {
             </div>
             
             {/* Search Input */}
-            <div className="px-4 py-3">
+            <div className="flex-none px-4 py-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
@@ -189,17 +189,20 @@ const ChatView = () => {
               </div>
             </div>
             
-            <ConversationList
-              conversations={conversations}
-              currentConversation={currentConversation}
-              onSelectConversation={handleSelectConversation}
-            />
+            {/* Conversation List */}
+            <div className="flex-1 overflow-hidden">
+              <ConversationList
+                conversations={conversations}
+                currentConversation={currentConversation}
+                onSelectConversation={handleSelectConversation}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
       
       {/* Chat Area */}
-      <div className="w-full h-full flex flex-col md:col-span-7 lg:col-span-7 bg-gradient-to-br from-background/95 to-background/90">
+      <div className="w-full h-full flex flex-col md:col-span-7 lg:col-span-7 bg-gradient-to-br from-background/95 to-background/90 overflow-hidden isolate">
         {!currentConversation ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center p-6 max-w-md mx-auto">
@@ -235,9 +238,9 @@ const ChatView = () => {
             </div>
           </div>
         ) : (
-          <>
+          <div className="h-full flex flex-col overflow-hidden">
             {/* Chat Header */}
-            <div className="flex items-center justify-between p-3 border-b border-accent/10 backdrop-blur-sm bg-background/80 sticky top-0 z-10">
+            <div className="flex-none flex items-center justify-between p-3 border-b border-accent/10 backdrop-blur-sm bg-background/80 z-10">
               <div className="flex items-center">
                 {isMobile && (
                   <Button
@@ -411,16 +414,19 @@ const ChatView = () => {
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 scrollbar-thin bg-gradient-radial from-background/50 to-background/95">
               {messages.length > 0 ? (
-                messages.map((message) => (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                    isCurrentUser={message.senderId === user?.id}
-                    onReply={() => handleReply(message.id)}
-                    onDelete={deleteMessage}
-                    onReact={reactToMessage}
-                  />
-                ))
+                <div className="space-y-4">
+                  {messages.map((message) => (
+                    <ChatMessage
+                      key={message.id}
+                      message={message}
+                      isCurrentUser={message.senderId === user?.id}
+                      onReply={() => handleReply(message.id)}
+                      onDelete={deleteMessage}
+                      onReact={reactToMessage}
+                    />
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
@@ -447,18 +453,13 @@ const ChatView = () => {
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
             
             {/* Message Input */}
-            <div className="p-4 border-t border-accent/10 bg-background/80 backdrop-blur-md">
-              <MessageInput 
-                onSendMessage={handleSendMessage}
-                replyingTo={replyingTo}
-                onCancelReply={() => setReplyingTo(null)}
-              />
+            <div className="flex-none p-4 border-t border-accent/10 bg-background/80 backdrop-blur-sm">
+              <MessageInput onSendMessage={handleSendMessage} replyingTo={replyingTo} onCancelReply={() => setReplyingTo(null)} />
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
