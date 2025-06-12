@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, AlertTriangle, Mail, Lock, User, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,13 +8,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 const formVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
-  exit: { opacity: 0, x: 20, transition: { duration: 0.3 } },
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+  exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
 };
 
 const inputVariants = {
-  invalid: { x: [0, -10, 10, -5, 5, 0], transition: { duration: 0.5 } },
+  invalid: { x: [0, -5, 5, -3, 3, 0], transition: { duration: 0.4 } },
 };
 
 const AuthForm = () => {
@@ -117,42 +116,55 @@ const AuthForm = () => {
   };
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full">
       <motion.div
         initial="hidden"
         animate="visible"
         exit="exit"
         variants={formVariants}
         key={isLogin ? 'login' : 'register'}
+        className="space-y-6"
       >
-        <div className="mb-6 text-center">
-          <h2 className="text-2xl font-bold mb-2">
+        <div className="text-center">
+          <h2 className="auth-heading text-gradient-primary">
             {isLogin ? 'Welcome Back!' : 'Create an Account'}
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {isLogin
               ? 'Sign in to connect with students and educators'
               : 'Join our educational community today'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {!isLogin && (
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Your preferred username"
-                required
-              />
+              <Label htmlFor="username" className="text-sm font-medium flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-primary" />
+                Username
+              </Label>
+              <div className="relative">
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Your preferred username"
+                  className="form-input-animated pl-10"
+                  required
+                />
+                <div className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground">
+                  <User className="h-5 w-5" />
+                </div>
+              </div>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-sm font-medium flex items-center gap-1.5">
+              <Mail className="h-3.5 w-3.5 text-primary" />
+              Email Address
+            </Label>
             <div className="relative">
               <motion.div variants={inputVariants} animate={emailValid ? undefined : 'invalid'}>
                 <Input
@@ -161,27 +173,41 @@ const AuthForm = () => {
                   value={email}
                   onChange={handleEmailChange}
                   placeholder="your.email@example.com"
-                  className={`${!emailValid ? 'border-destructive' : ''}`}
+                  className={`form-input-animated pl-10 ${!emailValid ? 'border-destructive focus-visible:ring-destructive/30' : ''}`}
                   required
                 />
               </motion.div>
+              <div className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground">
+                <Mail className="h-5 w-5" />
+              </div>
               {email && (
-                <div className="absolute right-3 top-2.5">
+                <div className="absolute right-3 top-2.5 transition-all duration-300">
                   {emailValid ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <CheckCircle className="h-5 w-5 text-green-500 animate-fade-in" />
                   ) : (
-                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                    <AlertTriangle className="h-5 w-5 text-destructive animate-fade-in" />
                   )}
                 </div>
               )}
             </div>
             {!emailValid && (
-              <p className="text-destructive text-sm">Please enter a valid email address</p>
+              <motion.p 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="text-destructive text-sm flex items-center gap-1.5"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" /> 
+                Please enter a valid email address
+              </motion.p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-sm font-medium flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5 text-primary" />
+              Password
+            </Label>
             <div className="relative">
               <motion.div variants={inputVariants} animate={passwordValid ? undefined : 'invalid'}>
                 <Input
@@ -190,89 +216,121 @@ const AuthForm = () => {
                   value={password}
                   onChange={handlePasswordChange}
                   placeholder="Your password"
-                  className={`${!passwordValid ? 'border-destructive' : ''}`}
+                  className={`form-input-animated pl-10 ${!passwordValid ? 'border-destructive focus-visible:ring-destructive/30' : ''}`}
                   required
                 />
               </motion.div>
+              <div className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground">
+                <Lock className="h-5 w-5" />
+              </div>
               <button
                 type="button"
-                className="absolute right-3 top-2.5"
+                className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
                 onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
               >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-5 w-5 text-muted-foreground" />
-                )}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
             {!passwordValid && (
-              <p className="text-destructive text-sm">Password must be at least 6 characters long</p>
+              <motion.p 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="text-destructive text-sm flex items-center gap-1.5"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Password must be at least 6 characters
+              </motion.p>
             )}
           </div>
 
           {!isLogin && (
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirm-password" className="text-sm font-medium flex items-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 text-primary" />
+                Confirm Password
+              </Label>
               <div className="relative">
                 <motion.div variants={inputVariants} animate={passwordsMatch ? undefined : 'invalid'}>
                   <Input
-                    id="confirmPassword"
+                    id="confirm-password"
                     type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={handleConfirmPasswordChange}
                     placeholder="Confirm your password"
-                    className={`${!passwordsMatch ? 'border-destructive' : ''}`}
+                    className={`form-input-animated pl-10 ${!passwordsMatch ? 'border-destructive focus-visible:ring-destructive/30' : ''}`}
                     required
                   />
                 </motion.div>
-                {confirmPassword && (
-                  <div className="absolute right-3 top-2.5">
-                    {passwordsMatch ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                    )}
-                  </div>
-                )}
+                <div className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground">
+                  <Lock className="h-5 w-5" />
+                </div>
               </div>
               {!passwordsMatch && (
-                <p className="text-destructive text-sm">Passwords don't match</p>
+                <motion.p 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="text-destructive text-sm flex items-center gap-1.5"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Passwords do not match
+                </motion.p>
               )}
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={loading || (!emailValid || !passwordValid || (!isLogin && !passwordsMatch))}
+          {isLogin && (
+            <div className="flex justify-end mt-1">
+              <button
+                type="button"
+                className="text-sm text-primary hover:text-primary/80 hover:underline transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
+
+          <Button 
+            type="submit" 
+            className={`w-full h-12 mt-2 ${isLogin ? 'btn-default' : 'btn-gradient'}`}
+            disabled={loading}
           >
             {loading ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {isLogin ? 'Signing in...' : 'Creating account...'}
-              </span>
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isLogin ? "Signing in..." : "Creating account..."}
+              </>
             ) : (
-              <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
+              <>
+                {isLogin ? "Sign In" : "Create Account"}
+                {isLogin ? <ArrowRight className="h-4 w-4 ml-2" /> : <Sparkles className="h-4 w-4 ml-2" />}
+              </>
             )}
           </Button>
-        </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button
-              type="button"
-              onClick={toggleView}
-              className="font-medium text-primary hover:underline focus:outline-none"
-            >
-              {isLogin ? 'Sign up' : 'Sign in'}
-            </button>
-          </p>
-        </div>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-card px-4 text-xs text-muted-foreground">
+                OR
+              </span>
+            </div>
+          </div>
+
+          <motion.button
+            type="button"
+            className="text-primary hover:text-primary/80 text-sm font-medium w-full text-center hover:underline transition-colors"
+            onClick={toggleView}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+          >
+            {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+          </motion.button>
+        </form>
       </motion.div>
     </div>
   );

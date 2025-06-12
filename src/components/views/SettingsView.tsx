@@ -253,22 +253,7 @@ const SettingsView = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <Label className="text-base">Theme</Label>
-                  <div className="text-sm text-muted-foreground">
-                    Switch between light and dark themes
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Sun className="h-4 w-4 text-muted-foreground" />
-                  <Switch
-                    checked={theme === 'dark'}
-                    onCheckedChange={toggleTheme}
-                  />
-                  <Moon className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
+              {/* Theme toggle removed */}
               
               <div className="space-y-4">
                 <Label>Font Size</Label>

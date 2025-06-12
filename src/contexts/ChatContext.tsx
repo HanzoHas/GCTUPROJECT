@@ -4,7 +4,7 @@ import { messages as messagesApi, conversations as conversationsApi } from '../l
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { getSessionToken } from '../lib/convex';
+import { getSessionToken, clearSessionToken } from '../lib/convex';
 import { Id } from '../../convex/_generated/dataModel';
 
 export type MessageType = 'text' | 'image' | 'video' | 'audio';
@@ -203,7 +203,7 @@ const TypingIndicatorsProvider = ({
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   // Context state
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -214,6 +214,30 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [typingTimerRef, setTypingTimerRef] = useState<NodeJS.Timeout | null>(null);
   const [typingUsers, setTypingUsers] = useState<{userId: string, username: string}[]>([]);
   const { toast } = useToast();
+  
+  // Handle auth errors
+  useEffect(() => {
+    const handleAuthError = (event: ErrorEvent) => {
+      // Check if error is related to auth
+      if (event.error?.message?.includes('Unauthorized: Invalid or expired session')) {
+        console.log('Auth session expired. Logging out...');
+        clearSessionToken();
+        logout();
+        toast({
+          title: "Session Expired",
+          description: "Your session has expired. Please log in again.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    // Add global error handler
+    window.addEventListener('error', handleAuthError);
+    
+    return () => {
+      window.removeEventListener('error', handleAuthError);
+    };
+  }, [logout, toast]);
   
   // Get the session token
   const sessionToken = useMemo(() => getSessionToken() || "", []);

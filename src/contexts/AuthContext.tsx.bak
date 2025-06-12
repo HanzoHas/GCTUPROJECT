@@ -1,19 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { auth, saveSessionToken, clearSessionToken, UserProfile } from '../lib/convex';
 import { useToast } from '@/components/ui/use-toast';
-import { Id } from '../../convex/_generated/dataModel';
 
-// Backend returns this shape from auth.me()
-interface BackendUser {
-  id: Id<"users">;
-  username: string;
-  email: string; 
-  profilePicture?: string;
-  status: "Available" | "Busy" | "In class" | "Offline";
-  isAdmin: boolean;
-}
-
-// Our app needs these additional fields
 type User = UserProfile;
 
 interface AuthContextType {
@@ -47,17 +35,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Function to check auth status
   const checkAuth = async () => {
     try {
-      const currentUser = await auth.me() as BackendUser | null;
+      const currentUser = await auth.me();
       if (currentUser) {
-        // Add the missing fields that UserProfile requires
-        const userWithRequiredFields: UserProfile = {
+        setUser({
           ...currentUser,
-          role: 'student',
+          role: currentUser.role || 'student',
           isOnline: true,
           lastSeen: Date.now()
-        };
-        
-        setUser(userWithRequiredFields);
+        });
         setIsAuthenticated(true);
       } else {
         setUser(null);
@@ -104,17 +89,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const result = await auth.login(email, password);
       if (result && result.token) {
         saveSessionToken(result.token);
-        const currentUser = await auth.me() as BackendUser | null;
+        const currentUser = await auth.me();
         if (currentUser) {
-          // Add the missing fields that UserProfile requires
-          const userWithRequiredFields: UserProfile = {
+          setUser({
             ...currentUser,
-            role: 'student',
+            role: currentUser.role || 'student',
             isOnline: true,
             lastSeen: Date.now()
-          };
-          
-          setUser(userWithRequiredFields);
+          });
           setIsAuthenticated(true);
         }
       } else {
@@ -135,17 +117,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const result = await auth.register(username, email, password, confirmPassword);
       if (result && result.token) {
         saveSessionToken(result.token);
-        const currentUser = await auth.me() as BackendUser | null;
+        const currentUser = await auth.me();
         if (currentUser) {
-          // Add the missing fields that UserProfile requires
-          const userWithRequiredFields: UserProfile = {
+          setUser({
             ...currentUser,
-            role: 'student',
+            role: currentUser.role || 'student',
             isOnline: true,
             lastSeen: Date.now()
-          };
-          
-          setUser(userWithRequiredFields);
+          });
           setIsAuthenticated(true);
         }
       } else {
@@ -171,17 +150,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshUser = async () => {
     try {
       if (isAuthenticated) {
-        const currentUser = await auth.me() as BackendUser | null;
+        const currentUser = await auth.me();
         if (currentUser) {
-          // Add the missing fields that UserProfile requires
-          const userWithRequiredFields: UserProfile = {
+          setUser({
             ...currentUser,
-            role: 'student',
+            role: currentUser.role || 'student',
             isOnline: true,
             lastSeen: Date.now()
-          };
-          
-          setUser(userWithRequiredFields);
+          });
         }
       }
     } catch (error) {
@@ -194,4 +170,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </AuthContext.Provider>
   );
-}; 
+};

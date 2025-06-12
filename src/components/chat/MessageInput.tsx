@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Send, Image, Video, Mic, X, AlertCircle } from 'lucide-react';
+import { Send, Image, Video, Mic, X, AlertCircle, Paperclip, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageType } from '@/contexts/ChatContext';
 import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 
 interface MessageInputProps {
   onSendMessage: (content: string, type: MessageType) => void;
@@ -24,8 +25,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileType, setFileType] = useState<MessageType>('text');
   const [isUploading, setIsUploading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: MessageType) => {
     const file = e.target.files?.[0];
@@ -74,19 +77,29 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
+  // Automatically adjust textarea height based on content
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 150)}px`;
+    }
+  };
+
   return (
     <div className="w-full">
       {replyingTo && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center bg-muted rounded-md p-2 mb-2"
+          exit={{ opacity: 0, y: 10 }}
+          className="flex items-center bg-muted/40 backdrop-blur-sm border border-muted/30 rounded-xl p-2.5 mb-3"
         >
           <div className="flex-1 min-w-0">
-            <div className="text-xs text-muted-foreground mb-0.5">Replying to message</div>
-            <div className="text-sm truncate">{replyingTo.content}</div>
+            <div className="text-xs text-primary/80 font-medium mb-0.5">Replying to message</div>
+            <div className="text-sm truncate text-muted-foreground">{replyingTo.content}</div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onCancelReply} className="h-6 w-6">
+          <Button variant="ghost" size="icon" onClick={onCancelReply} className="h-6 w-6 rounded-full hover:bg-muted/50">
             <X className="h-3 w-3" />
           </Button>
         </motion.div>
@@ -96,12 +109,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="relative mb-2"
+          exit={{ opacity: 0, scale: 0.9 }}
+          className="relative mb-3 bg-muted/20 backdrop-blur-sm p-2 rounded-xl border border-muted/30"
         >
           <Button
             variant="destructive"
             size="icon"
-            className="absolute top-2 right-2 h-6 w-6 rounded-full"
+            className="absolute top-2 right-2 h-6 w-6 rounded-full opacity-90 hover:opacity-100"
             onClick={() => {
               setSelectedFile(null);
               setPreviewUrl(null);
@@ -111,33 +125,48 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </Button>
           
           {fileType === 'image' && (
-            <img src={previewUrl} alt="Preview" className="rounded-md max-h-40 w-auto" />
+            <img src={previewUrl} alt="Preview" className="rounded-lg shadow-md max-h-40 w-auto mx-auto" />
           )}
           
           {fileType === 'video' && (
-            <video src={previewUrl} controls className="rounded-md max-h-40 w-auto" />
+            <video src={previewUrl} controls className="rounded-lg shadow-md max-h-40 w-auto mx-auto" />
           )}
           
           {fileType === 'audio' && (
-            <audio src={previewUrl} controls className="w-full" />
+            <audio src={previewUrl} controls className="w-full rounded-md" />
           )}
+          
+          <div className="text-xs text-muted-foreground mt-1.5 px-1">
+            {selectedFile?.name} ({Math.round((selectedFile?.size || 0) / 1024)} KB)
+          </div>
         </motion.div>
       )}
       
-      <div className="flex items-center gap-1">
+      <div className={cn(
+        "flex items-end gap-1.5 p-0.5 pr-1 border rounded-2xl transition-all duration-300",
+        isFocused 
+          ? "bg-background shadow-lg border-primary/30 ring-2 ring-primary/10" 
+          : "bg-muted/30 border-muted/50 hover:border-muted/80"
+      )}>
         <div className="flex-1 relative">
           <textarea
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[50px] max-h-[150px] resize-none pr-10"
+            ref={textareaRef}
+            className="w-full rounded-xl bg-transparent px-3 py-2.5 text-sm min-h-[50px] max-h-[150px] resize-none focus:outline-none"
             placeholder="Type a message..."
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              adjustTextareaHeight();
+            }}
             onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             disabled={isUploading}
             style={{fontSize: '16px'}} // Prevents iOS zoom on focus
           />
         </div>
         
-        <div className="flex items-center">
+        <div className="flex items-center pb-1.5 pr-1 gap-0.5">
           <input
             type="file"
             accept="image/*"
@@ -147,16 +176,25 @@ const MessageInput: React.FC<MessageInputProps> = ({
             disabled={isUploading}
           />
           
-          <div className="flex sm:flex-row flex-col">
+          <div className="flex gap-1">
             <Button
               variant="ghost"
               size="icon"
               type="button"
-              className="h-8 w-8"
+              className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
             >
-              <Image className="h-4 w-4" />
+              <Paperclip className="h-5 w-5" />
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            >
+              <Smile className="h-5 w-5" />
             </Button>
             
             <Button
@@ -165,10 +203,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
               type="button"
               disabled={(!message.trim() && !previewUrl) || isUploading}
               onClick={handleSendMessage}
-              className="h-8 w-8"
+              className={cn(
+                "h-9 w-9 rounded-full transition-all duration-300",
+                (!message.trim() && !previewUrl) ? "opacity-70" : "shadow-md"
+              )}
             >
               {isUploading ? (
-                <span className="animate-spin">⏳</span>
+                <span className="inline-block animate-spin-slow">⏳</span>
               ) : (
                 <Send className="h-4 w-4" />
               )}
