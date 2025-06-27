@@ -1,1 +1,45 @@
 // Fixed version
+hanzo@kali:~/Desktop/GCTUPROJECT$ npx convex dev
+✔ Provisioned a dev deployment and saved its name as CONVEX_DEPLOYMENT to .env.local
+
+Write your Convex functions in convex/
+Give us feedback at https://convex.dev/community or support@convex.dev
+View the Convex dashboard at https://dashboard.convex.dev/d/tacit-impala-421
+
+✖ TypeScript typecheck via `tsc` failed.
+To ignore failing typecheck, use `--typecheck=disable`.
+convex/channels.ts:41:7 - error TS2353: Object literal may only specify known properties, and 'type' does not exist in type '{ avatar?: string | undefined; description?: string | undefined; name: string; createdAt: number; lecturerId: Id<"users">; }'.
+
+41       type: type || "TEXT",
+         ~~~~
+convex/channels.ts:52:13 - error TS2322: Type 'string' is not assignable to type 'Id<"users">'.
+  Type 'string' is not assignable to type '{ __tableName: "users"; }'.
+
+52             userId: memberId,
+               ~~~~~~
+
+  node_modules/convex/dist/esm-types/type_utils.d.ts:11:97
+    11 export type Expand<ObjectType extends Record<any, any>> = ObjectType extends Record<any, any> ? {
+                                                                                                       ~
+    12     [Key in keyof ObjectType]: ObjectType[Key];
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    13 } : never;
+       ~
+    The expected type comes from property 'userId' which is declared here on type '{ subchannelId?: Id<"studySubchannels"> | undefined; userId: Id<"users">; joinedAt: number; channelId: Id<"studyChannels">; }'
+convex/channels.ts:206:15 - error TS2322: Type 'string' is not assignable to type 'Id<"users">'.
+  Type 'string' is not assignable to type '{ __tableName: "users"; }'.
+
+206               userId: memberId,
+                  ~~~~~~
+
+  node_modules/convex/dist/esm-types/type_utils.d.ts:11:97
+    11 export type Expand<ObjectType extends Record<any, any>> = ObjectType extends Record<any, any> ? {
+                                                                                                       ~
+    12     [Key in keyof ObjectType]: ObjectType[Key];
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    13 } : never;
+       ~
+    The expected type comes from property 'userId' which is declared here on type '{ subchannelId?: Id<"studySubchannels"> | undefined; userId: Id<"users">; joinedAt: number; channelId: Id<"studyChannels">; }'
+
+Found 3 errors in the same file, starting at: convex/channels.ts:41
+
