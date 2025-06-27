@@ -12,10 +12,15 @@ export const createChannel = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     avatar: v.optional(v.string()),
+    type: v.optional(v.string()),
+    isPrivate: v.optional(v.boolean()),
+    allowedStudentGroups: v.optional(v.array(v.string())),
+    createdByStudent: v.optional(v.boolean()),
+    members: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const { user, userId } = await getAuthenticatedUser(ctx, args.sessionToken);
-    const { name, description, avatar } = args;
+    const { name, description, avatar, type, isPrivate, allowedStudentGroups, createdByStudent, members } = args;
 
     // Only lecturers can create channels
     if (!user.isLecturer && !user.isAdmin) {
@@ -33,7 +38,26 @@ export const createChannel = mutation({
       lecturerId: userId,
       avatar,
       createdAt: Date.now(),
+      type: type || "TEXT",
+      isPrivate: isPrivate || false,
+      allowedStudentGroups,
+      createdByStudent: createdByStudent || false,
     });
+
+    // Add members if provided
+    if (members && members.length > 0) {
+      for (const memberId of members) {
+        try {
+          await ctx.db.insert("channelMembers", {
+            userId: memberId,
+            channelId,
+            joinedAt: Date.now(),
+          });
+        } catch (error) {
+          console.error("Failed to add member:", memberId);
+        }
+      }
+    }
 
     return { channelId };
   },
@@ -98,10 +122,15 @@ export const updateChannel = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     avatar: v.optional(v.string()),
+    type: v.optional(v.string()),
+    position: v.optional(v.number()),
+    isPrivate: v.optional(v.boolean()),
+    allowedStudentGroups: v.optional(v.array(v.string())),
+    members: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const { user, userId } = await getAuthenticatedUser(ctx, args.sessionToken);
-    const { channelId, name, description, avatar } = args;
+    const { channelId, name, description, avatar, type, position, isPrivate, allowedStudentGroups, members } = args;
 
     const channel = await ctx.db.get(channelId);
     if (!channel) {
@@ -129,10 +158,60 @@ export const updateChannel = mutation({
     if (avatar !== undefined) {
       updates.avatar = avatar;
     }
+    
+    if (type !== undefined) {
+      updates.type = type;
+    }
+    
+    if (position !== undefined) {
+      updates.position = position;
+    }
+    
+    if (isPrivate !== undefined) {
+      updates.isPrivate = isPrivate;
+    }
+    
+    if (allowedStudentGroups !== undefined) {
+      updates.allowedStudentGroups = allowedStudentGroups;
+    }
 
     // Apply updates if any
     if (Object.keys(updates).length > 0) {
       await ctx.db.patch(channelId, updates);
+    }
+    
+    // Update members if provided
+    if (members !== undefined && Array.isArray(members)) {
+      // Get current members
+      const currentMembers = await ctx.db
+        .query("channelMembers")
+        .withIndex("by_channel", q => q.eq("channelId", channelId))
+        .collect();
+      
+      const currentMemberIds = currentMembers.map(m => m.userId.toString());
+      const newMemberIds = members.map(m => m.toString());
+      
+      // Remove members that are no longer in the list
+      for (const member of currentMembers) {
+        if (!newMemberIds.includes(member.userId.toString())) {
+          await ctx.db.delete(member._id);
+        }
+      }
+      
+      // Add new members
+      for (const memberId of newMemberIds) {
+        if (!currentMemberIds.includes(memberId)) {
+          try {
+            await ctx.db.insert("channelMembers", {
+              userId: memberId,
+              channelId,
+              joinedAt: Date.now(),
+            });
+          } catch (error) {
+            console.error("Failed to add member:", memberId);
+          }
+        }
+      }
     }
 
     return { success: true };
