@@ -20,7 +20,7 @@ export const createChannel = mutation({
   },
   handler: async (ctx, args) => {
     const { user, userId } = await getAuthenticatedUser(ctx, args.sessionToken);
-    const { name, description, avatar, type, isPrivate, allowedStudentGroups, createdByStudent, members } = args;
+    const { name, description, avatar, members } = args;
 
     // Only lecturers can create channels
     if (!user.isLecturer && !user.isAdmin) {
@@ -31,30 +31,37 @@ export const createChannel = mutation({
       throw new ConvexError("Channel name cannot be empty");
     }
 
-    // Create the channel
+    // Create the channel with only the fields in the schema
     const channelId = await ctx.db.insert("studyChannels", {
       name,
       description,
       lecturerId: userId,
       avatar,
       createdAt: Date.now(),
-      type: type || "TEXT",
-      isPrivate: isPrivate || false,
-      allowedStudentGroups,
-      createdByStudent: createdByStudent || false,
+    });
+
+    // Add the creator as a member of the channel
+    await ctx.db.insert("channelMembers", {
+      userId,
+      channelId,
+      joinedAt: Date.now(),
     });
 
     // Add members if provided
     if (members && members.length > 0) {
-      for (const memberId of members) {
+      for (const memberIdStr of members) {
         try {
-          await ctx.db.insert("channelMembers", {
-            userId: memberId,
-            channelId,
-            joinedAt: Date.now(),
-          });
+          // Convert string ID to proper Convex ID
+          const memberId = ctx.db.normalizeId("users", memberIdStr);
+          if (memberId) {
+            await ctx.db.insert("channelMembers", {
+              userId: memberId,
+              channelId,
+              joinedAt: Date.now(),
+            });
+          }
         } catch (error) {
-          console.error("Failed to add member:", memberId);
+          console.error("Failed to add member:", memberIdStr);
         }
       }
     }
@@ -199,16 +206,20 @@ export const updateChannel = mutation({
       }
       
       // Add new members
-      for (const memberId of newMemberIds) {
-        if (!currentMemberIds.includes(memberId)) {
+      for (const memberIdStr of newMemberIds) {
+        if (!currentMemberIds.includes(memberIdStr)) {
           try {
-            await ctx.db.insert("channelMembers", {
-              userId: memberId,
-              channelId,
-              joinedAt: Date.now(),
-            });
+            // Convert string ID to proper Convex ID
+            const memberId = ctx.db.normalizeId("users", memberIdStr);
+            if (memberId) {
+              await ctx.db.insert("channelMembers", {
+                userId: memberId,
+                channelId,
+                joinedAt: Date.now(),
+              });
+            }
           } catch (error) {
-            console.error("Failed to add member:", memberId);
+            console.error("Failed to add member:", memberIdStr);
           }
         }
       }
