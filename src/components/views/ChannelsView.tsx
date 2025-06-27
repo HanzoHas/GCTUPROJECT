@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useChannel, ChannelType } from '@/contexts/ChannelContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from "@/components/ui/input";
@@ -9,16 +9,27 @@ import { CreateChannelDialog } from './CreateChannelDialog';
 
 function ChannelsView() {
   const { user } = useAuth();
-  const { userChannels } = useChannel();
+  const { userChannels, refreshChannels, isLoadingChannels } = useChannel();
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<ChannelType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Filter channels based on search query
+  // Fetch channels when component mounts
+  useEffect(() => {
+    refreshChannels();
+  }, []);
+
+  // Filter channels based on search query and remove duplicates
   const filteredChannels = useMemo(() => {
-    if (!searchQuery) return userChannels;
+    // First deduplicate channels by ID
+    const uniqueChannels = Array.from(
+      new Map(userChannels.map(channel => [channel._id, channel])).values()
+    );
+    
+    // Then apply search filter
+    if (!searchQuery) return uniqueChannels;
     const query = searchQuery.toLowerCase();
-    return userChannels.filter(channel => 
+    return uniqueChannels.filter(channel => 
       channel.name.toLowerCase().includes(query) ||
       channel.description?.toLowerCase().includes(query)
     );
@@ -27,6 +38,20 @@ function ChannelsView() {
   // Early return if not authenticated
   if (!user) {
     return null;
+  }
+  
+  // Show loading state
+  if (isLoadingChannels) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center space-y-4 text-center">
+          <div className="flex h-10 w-10 animate-spin items-center justify-center rounded-full border-2 border-primary border-t-transparent">
+            <span className="sr-only">Loading...</span>
+          </div>
+          <h3 className="text-lg font-semibold">Loading channels...</h3>
+        </div>
+      </div>
+    );
   }
 
   return (

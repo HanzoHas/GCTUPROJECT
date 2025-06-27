@@ -5,10 +5,41 @@ const MOCK_DATA = {
   channels: [
     {
       _id: "mock-channel-1",
-      name: "General",
-      description: "General channel",
+      name: "Course Discussions",
+      description: "General discussions about the course",
       lecturerId: "mock-user-1",
       createdAt: Date.now(),
+      type: "TEXT",
+      position: 0,
+      isPrivate: false,
+      lecturer: {
+        id: "mock-user-1",
+        name: "Professor Smith",
+      }
+    },
+    {
+      _id: "mock-channel-2",
+      name: "Assignments",
+      description: "Assignment discussions and submissions",
+      lecturerId: "mock-user-1",
+      createdAt: Date.now() - 86400000, // 1 day ago
+      type: "TEXT",
+      position: 1,
+      isPrivate: false,
+      lecturer: {
+        id: "mock-user-1",
+        name: "Professor Smith",
+      }
+    },
+    {
+      _id: "mock-channel-3",
+      name: "Study Groups",
+      description: "Organize and join study groups",
+      lecturerId: "mock-user-1",
+      createdAt: Date.now() - 172800000, // 2 days ago
+      type: "TEXT",
+      position: 2,
+      isPrivate: false,
       lecturer: {
         id: "mock-user-1",
         name: "Professor Smith",
@@ -20,9 +51,45 @@ const MOCK_DATA = {
       _id: "mock-subchannel-1",
       channelId: "mock-channel-1",
       name: "Announcements",
-      description: "Important announcements",
+      description: "Important course announcements",
       studentGroups: [],
       createdAt: Date.now(),
+      type: "ANNOUNCEMENT",
+      position: 0,
+      isPrivate: false
+    },
+    {
+      _id: "mock-subchannel-2",
+      channelId: "mock-channel-1",
+      name: "General Discussion",
+      description: "General course discussions",
+      studentGroups: [],
+      createdAt: Date.now(),
+      type: "TEXT",
+      position: 1,
+      isPrivate: false
+    },
+    {
+      _id: "mock-subchannel-3",
+      channelId: "mock-channel-2",
+      name: "Assignment Help",
+      description: "Get help with assignments",
+      studentGroups: [],
+      createdAt: Date.now(),
+      type: "TEXT",
+      position: 0,
+      isPrivate: false
+    },
+    {
+      _id: "mock-subchannel-4",
+      channelId: "mock-channel-2",
+      name: "Submission Guidelines",
+      description: "Guidelines for assignment submissions",
+      studentGroups: [],
+      createdAt: Date.now(),
+      type: "ANNOUNCEMENT",
+      position: 1,
+      isPrivate: false
     }
   ],
   announcements: []
@@ -294,4 +361,4 @@ export const directApi = {
       return { success: true };
     }
   }
-}; 
+};
