@@ -146,11 +146,8 @@ export const directApi = {
       console.error(`Error calling ${fnName}:`, error);
       
       // If this is our first error, set fallback mode
-      if (!useFallbackMode) {
-        console.warn("API calls failing, switching to fallback mode");
-        useFallbackMode = true;
-      }
-      
+      // Don't switch to fallback mode automatically
+      // Just propagate the error
       throw error;
     }
   },
@@ -174,8 +171,8 @@ export const directApi = {
     try {
       return await this._callConvexFunction("channels:getUserChannels", { sessionToken });
     } catch (error) {
-      console.log("Falling back to mock data for channels");
-      return this._getMockData("getUserChannels");
+      console.error("Error fetching channels:", error);
+      throw error;
     }
   },
 
@@ -183,8 +180,8 @@ export const directApi = {
     try {
       return await this._callConvexFunction("channels:getLecturerChannels", { sessionToken });
     } catch (error) {
-      console.log("Falling back to mock data for lecturer channels");
-      return this._getMockData("getLecturerChannels");
+      console.error("Error fetching lecturer channels:", error);
+      throw error;
     }
   },
 
@@ -196,8 +193,8 @@ export const directApi = {
         channelId 
       });
     } catch (error) {
-      console.log("Falling back to mock data for subchannels");
-      return this._getMockData("getChannelSubchannels");
+      console.error("Error fetching subchannels:", error);
+      throw error;
     }
   },
 
@@ -210,8 +207,8 @@ export const directApi = {
         subchannelId
       });
     } catch (error) {
-      console.log("Falling back to mock data for announcements");
-      return this._getMockData("getChannelAnnouncements");
+      console.error("Error fetching announcements:", error);
+      throw error;
     }
   },
 
@@ -220,8 +217,8 @@ export const directApi = {
     try {
       return await this._callConvexFunction("users:isCurrentUserLecturer", { sessionToken });
     } catch (error) {
-      console.log("Falling back to mock data for user role");
-      return this._getMockData("isCurrentUserLecturer");
+      console.error("Error checking lecturer status:", error);
+      throw error;
     }
   },
 
@@ -239,8 +236,8 @@ export const directApi = {
         members
       }, true);
     } catch (error) {
-      console.log("Mock channel creation");
-      return { success: true, channelId: "mock-channel-" + Date.now() };
+      console.error("Error creating channel:", error);
+      throw error;
     }
   },
 
@@ -260,8 +257,8 @@ export const directApi = {
         ...data
       }, true);
     } catch (error) {
-      console.log("Mock channel update");
-      return { success: true };
+      console.error("Error updating channel:", error);
+      throw error;
     }
   },
 
@@ -272,8 +269,8 @@ export const directApi = {
         channelId
       }, true);
     } catch (error) {
-      console.log("Mock channel deletion");
-      return { success: true };
+      console.error("Error deleting channel:", error);
+      throw error;
     }
   },
 
@@ -293,8 +290,8 @@ export const directApi = {
         studentGroups
       }, true);
     } catch (error) {
-      console.log("Mock subchannel creation");
-      return { success: true, subchannelId: "mock-subchannel-" + Date.now() };
+      console.error("Error creating subchannel:", error);
+      throw error; // Throw the error instead of returning mock data
     }
   },
 
@@ -310,8 +307,8 @@ export const directApi = {
         ...data
       }, true);
     } catch (error) {
-      console.log("Mock subchannel update");
-      return { success: true };
+      console.error("Error updating subchannel:", error);
+      throw error; // Throw the error instead of returning mock data
     }
   },
 
@@ -322,8 +319,8 @@ export const directApi = {
         subchannelId
       }, true);
     } catch (error) {
-      console.log("Mock subchannel deletion");
-      return { success: true };
+      console.error("Error deleting subchannel:", error);
+      throw error; // Throw the error instead of returning mock data
     }
   },
 
@@ -345,8 +342,8 @@ export const directApi = {
         type
       }, true);
     } catch (error) {
-      console.log("Mock announcement creation");
-      return { success: true, announcementId: "mock-announcement-" + Date.now() };
+      console.error("Error creating announcement:", error);
+      throw error; // Throw the error instead of returning mock data
     }
   },
 
@@ -357,8 +354,8 @@ export const directApi = {
         announcementId
       }, true);
     } catch (error) {
-      console.log("Mock announcement deletion");
-      return { success: true };
+      console.error("Error deleting announcement:", error);
+      throw error; // Throw the error instead of returning mock data
     }
   }
 };
