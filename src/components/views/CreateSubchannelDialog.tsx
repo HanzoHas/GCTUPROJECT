@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +54,9 @@ export function CreateSubchannelDialog({ channelId, onClose, onSubchannelCreated
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create New Subchannel</DialogTitle>
+          <DialogDescription>
+            Create a new subchannel with the desired type and settings.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
