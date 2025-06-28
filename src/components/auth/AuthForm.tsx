@@ -163,7 +163,7 @@ const AuthForm = () => {
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium flex items-center gap-1.5">
               <Mail className="h-3.5 w-3.5 text-primary" />
-              Email Address
+              Student Email Address
             </Label>
             <div className="relative">
               <motion.div variants={inputVariants} animate={emailValid ? undefined : 'invalid'}>
@@ -172,7 +172,7 @@ const AuthForm = () => {
                   type="email"
                   value={email}
                   onChange={handleEmailChange}
-                  placeholder="your.email@example.com"
+                  placeholder="4231000000@live.gctu.edu.gh"
                   className={`form-input-animated pl-10 ${!emailValid ? 'border-destructive focus-visible:ring-destructive/30' : ''}`}
                   required
                 />
