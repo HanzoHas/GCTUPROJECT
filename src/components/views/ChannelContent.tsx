@@ -3,6 +3,7 @@ import { ChannelType, useChannel, SubchannelType } from '@/contexts/ChannelConte
 import { Button } from '@/components/ui/button';
 import { X, MessageSquare, Users, Bell, Plus } from 'lucide-react';
 import { CreateSubchannelDialog } from './CreateSubchannelDialog';
+import { SubchannelContent } from './SubchannelContent';
 
 interface ChannelContentProps {
   channel: ChannelType;
@@ -94,29 +95,29 @@ export function ChannelContent({ channel, onClose }: ChannelContentProps) {
         </div>
         
         {/* Main content area */}
-        <div className="flex-1 p-4">
-          {channel.description && (
-            <p className="text-muted-foreground mb-4">{channel.description}</p>
-          )}
-          
+        <div className="flex-1 overflow-auto">
           {currentSubchannel ? (
-            <div>
-              <h3 className="text-lg font-medium mb-2">{currentSubchannel.name}</h3>
-              {currentSubchannel.description && (
-                <p className="text-muted-foreground mb-4">{currentSubchannel.description}</p>
-              )}
-              <div className="border rounded-md p-4 bg-card">
-                <p className="text-muted-foreground">Subchannel content will be displayed here</p>
-              </div>
-            </div>
+            <SubchannelContent 
+              channel={channel} 
+              subchannel={currentSubchannel} 
+            />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <h3 className="text-lg font-medium mb-2">Welcome to {channel.name}</h3>
               <p className="text-muted-foreground">
                 {subchannels.length > 0 
                   ? 'Select a subchannel to view its content' 
                   : 'This channel has no subchannels yet'}
               </p>
+              {subchannels.length === 0 && canManageChannel(channel._id) && (
+                <Button 
+                  onClick={() => setIsCreatingSubchannel(true)}
+                  className="mt-4"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Subchannel
+                </Button>
+              )}
             </div>
           )}
         </div>
