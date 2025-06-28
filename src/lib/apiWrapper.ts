@@ -223,7 +223,7 @@ export const directApi = {
   },
 
   // Mutations - these will just "succeed" without making changes in fallback mode
-  async createChannel(sessionToken: string, name: string, description?: string, type?: "CATEGORY" | "TEXT" | "ANNOUNCEMENT" | "CLASS", isPrivate?: boolean, allowedStudentGroups?: string[], createdByStudent?: boolean, members?: string[]) {
+  async createChannel(sessionToken: string, name: string, description?: string, type?: "CATEGORY" | "TEXT" | "ANNOUNCEMENT" | "CLASS", isPrivate?: boolean, allowedStudentGroups?: string[], createdByStudent?: boolean, members?: string[], level?: "100" | "200" | "300") {
     try {
       return await this._callConvexFunction("channels:createChannel", {
         sessionToken,
@@ -233,7 +233,8 @@ export const directApi = {
         isPrivate,
         allowedStudentGroups,
         createdByStudent,
-        members
+        members,
+        level
       }, true);
     } catch (error) {
       console.error("Error creating channel:", error);
@@ -248,6 +249,7 @@ export const directApi = {
     position?: number;
     isPrivate?: boolean;
     allowedStudentGroups?: string[];
+    level?: "100" | "200" | "300";
     members?: string[];
   }) {
     try {

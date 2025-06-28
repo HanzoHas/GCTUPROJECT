@@ -17,14 +17,16 @@ export const createChannel = mutation({
     allowedStudentGroups: v.optional(v.array(v.string())),
     createdByStudent: v.optional(v.boolean()),
     members: v.optional(v.array(v.string())),
+    level: v.optional(v.union(v.literal("100"), v.literal("200"), v.literal("300"))),
   },
   handler: async (ctx, args) => {
     const { user, userId } = await getAuthenticatedUser(ctx, args.sessionToken);
-    const { name, description, avatar, members } = args;
+    const { name, description, avatar, members, level } = args;
 
-    // Only lecturers can create channels
-    if (!user.isLecturer && !user.isAdmin) {
-      throw new ConvexError("Only lecturers can create study channels");
+    // Allow admin users to create channels
+    // For non-admin users, require lecturer permission
+    if (!user.isAdmin && !user.isLecturer) {
+      throw new ConvexError("Only lecturers and admins can create study channels");
     }
 
     if (name.trim().length === 0) {
@@ -38,6 +40,7 @@ export const createChannel = mutation({
       lecturerId: userId,
       avatar,
       createdAt: Date.now(),
+      level,
     });
 
     // Add the creator as a member of the channel
@@ -134,10 +137,11 @@ export const updateChannel = mutation({
     isPrivate: v.optional(v.boolean()),
     allowedStudentGroups: v.optional(v.array(v.string())),
     members: v.optional(v.array(v.string())),
+    level: v.optional(v.union(v.literal("100"), v.literal("200"), v.literal("300"))),
   },
   handler: async (ctx, args) => {
     const { user, userId } = await getAuthenticatedUser(ctx, args.sessionToken);
-    const { channelId, name, description, avatar, type, position, isPrivate, allowedStudentGroups, members } = args;
+    const { channelId, name, description, avatar, type, position, isPrivate, allowedStudentGroups, members, level } = args;
 
     const channel = await ctx.db.get(channelId);
     if (!channel) {
@@ -180,6 +184,10 @@ export const updateChannel = mutation({
     
     if (allowedStudentGroups !== undefined) {
       updates.allowedStudentGroups = allowedStudentGroups;
+    }
+    
+    if (level !== undefined) {
+      updates.level = level;
     }
 
     // Apply updates if any
@@ -286,27 +294,44 @@ export const deleteChannel = mutation({
   },
 });
 
-// Get all channels a user is a member of
+// Get all channels a user is a member of, plus all admin-created channels
 export const getUserChannels = query({
   args: {
     sessionToken: sessionTokenValidator,
   },
   handler: async (ctx, args) => {
-    const { userId } = await getAuthenticatedUser(ctx, args.sessionToken);
+    const { userId, user } = await getAuthenticatedUser(ctx, args.sessionToken);
 
-    // Get all channel memberships
-    const memberships = await ctx.db
-      .query("channelMembers")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    // Get all channels (all users should be able to see channels)
+    const allChannels = await ctx.db.query("studyChannels").collect();
+    
+    // If the user is an admin or lecturer, they should see all channels
+    // Otherwise, get the channels the user is a member of
+    let userChannelIds: Id<"studyChannels">[] = [];
+    if (!user.isAdmin && !user.isLecturer) {
+      // Get all channel memberships
+      const memberships = await ctx.db
+        .query("channelMembers")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+      
+      // Add user's personal channels to the list
+      userChannelIds = memberships.map((m) => m.channelId);
+    }
 
     // Get the channel details
-    const channelIds = memberships.map((m) => m.channelId);
     const channels = await Promise.all(
-      channelIds.map(async (id) => {
-        const channel = await ctx.db.get(id);
-        if (!channel) return null;
-
+      allChannels.map(async (channel) => {
+        // Skip if the user is not a member of a private channel
+        // and is not an admin/lecturer
+        if (!user.isAdmin && !user.isLecturer && 
+            !userChannelIds.some(id => id.toString() === channel._id.toString())) {
+          // Check if the channel is created by the current user
+          if (channel.lecturerId.toString() !== userId.toString()) {
+            return null;
+          }
+        }
+        
         const lecturer = await ctx.db.get(channel.lecturerId);
         return {
           ...channel,
@@ -414,5 +439,42 @@ export const removeChannelMember = mutation({
     }
 
     return { success: true };
+  },
+});
+
+// Get channels by level
+export const getChannelsByLevel = query({
+  args: {
+    sessionToken: sessionTokenValidator,
+    level: v.optional(v.union(v.literal("100"), v.literal("200"), v.literal("300"))),
+  },
+  handler: async (ctx, args) => {
+    await getAuthenticatedUser(ctx, args.sessionToken);
+    const { level } = args;
+
+    // Get all channels
+    const allChannels = await ctx.db.query("studyChannels").collect();
+    
+    // Filter by level if provided
+    const filteredChannels = level 
+      ? allChannels.filter(channel => channel.level === level)
+      : allChannels;
+
+    // Add lecturer info
+    const channelsWithDetails = await Promise.all(
+      filteredChannels.map(async (channel) => {
+        const lecturer = await ctx.db.get(channel.lecturerId);
+        return {
+          ...channel,
+          lecturer: {
+            id: lecturer?._id || "unknown",
+            name: lecturer?.username || "Unknown",
+            avatar: lecturer?.profilePicture,
+          }
+        };
+      })
+    );
+    
+    return channelsWithDetails;
   },
 }); 

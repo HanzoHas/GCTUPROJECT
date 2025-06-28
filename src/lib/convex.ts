@@ -24,6 +24,11 @@ export const clearSessionToken = (): void => {
   localStorage.removeItem("sessionToken");
 };
 
+// Helper function to convert string to Id type
+function convertToId<T extends string>(id: string): Id<T> {
+  return id as unknown as Id<T>;
+}
+
 // Type definitions for auth responses
 export interface AuthResponse {
   token: string;
@@ -187,10 +192,10 @@ export const messages = {
 
     return convex.mutation(api.messages.sendMessage, {
       sessionToken,
-      conversationId,
+      conversationId: convertToId<"conversations">(conversationId),
       content,
       type,
-      replyToId,
+      replyToId: replyToId ? convertToId<"messages">(replyToId) : undefined,
     });
   },
 
@@ -200,7 +205,7 @@ export const messages = {
 
     return convex.mutation(api.messages.editMessage, {
       sessionToken,
-      messageId,
+      messageId: convertToId<"messages">(messageId),
       content,
     });
   },
@@ -211,7 +216,7 @@ export const messages = {
 
     return convex.mutation(api.messages.deleteMessage, {
       sessionToken,
-      messageId,
+      messageId: convertToId<"messages">(messageId),
     });
   },
 
@@ -221,7 +226,7 @@ export const messages = {
 
     return convex.mutation(api.messages.markAsRead, {
       sessionToken,
-      messageId,
+      messageId: convertToId<"messages">(messageId),
     });
   },
 
@@ -235,7 +240,7 @@ export const messages = {
 
     return convex.query(api.messages.getMessages, {
       sessionToken,
-      conversationId,
+      conversationId: convertToId<"conversations">(conversationId),
       limit,
       before,
     });
@@ -247,7 +252,7 @@ export const messages = {
 
     return convex.mutation(api.messages.reactToMessage, {
       sessionToken,
-      messageId,
+      messageId: convertToId<"messages">(messageId),
       emoji,
     });
   },
@@ -259,12 +264,12 @@ export const messages = {
     if (isTyping) {
       return convex.mutation(api.messages.setTypingIndicator, {
         sessionToken,
-        conversationId,
+        conversationId: convertToId<"conversations">(conversationId),
       });
     } else {
       return convex.mutation(api.messages.clearTypingIndicator, {
         sessionToken,
-        conversationId,
+        conversationId: convertToId<"conversations">(conversationId),
       });
     }
   },
@@ -275,7 +280,7 @@ export const messages = {
 
     return convex.query(api.messages.getTypingIndicators, {
       sessionToken,
-      conversationId,
+      conversationId: convertToId<"conversations">(conversationId),
     });
   },
 };
@@ -286,9 +291,9 @@ export const conversations = {
     const sessionToken = getSessionToken();
     if (!sessionToken) return null;
 
-    return convex.mutation(api.conversations.createOneOnOne, {
+    return convex.mutation(api.conversations.createDirectConversation, {
       sessionToken,
-      otherUserId,
+      otherUserId: convertToId<"users">(otherUserId),
     });
   },
   
@@ -298,6 +303,15 @@ export const conversations = {
 
     return convex.query(api.conversations.getUserConversations, {
       sessionToken,
+    });
+  },
+  
+  getConversation: async ({ sessionToken, conversationId }: { sessionToken: string; conversationId: string }) => {
+    if (!sessionToken) return null;
+
+    return convex.query(api.conversations.getConversation, {
+      sessionToken,
+      conversationId: convertToId<"conversations">(conversationId),
     });
   },
 };
@@ -337,7 +351,7 @@ export const announcements = {
 
     return convex.query(api.announcements.getAnnouncementById, {
       sessionToken,
-      announcementId,
+      announcementId: convertToId<"announcements">(announcementId),
     });
   },
 
@@ -347,7 +361,7 @@ export const announcements = {
 
     return convex.mutation(api.announcements.deleteAnnouncement, {
       sessionToken,
-      announcementId,
+      announcementId: convertToId<"announcements">(announcementId),
     });
   },
 
@@ -364,7 +378,7 @@ export const announcements = {
 
     return convex.mutation(api.announcements.updateAnnouncement, {
       sessionToken,
-      announcementId,
+      announcementId: convertToId<"announcements">(announcementId),
       ...updates,
     });
   },

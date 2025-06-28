@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useChannel } from '@/contexts/ChannelContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-interface CreateChannelDialogProps {
+interface CreateSubchannelDialogProps {
+  channelId: string;
   onClose: () => void;
-  onChannelCreated: () => void;
+  onSubchannelCreated: () => void;
 }
 
-export function CreateChannelDialog({ onClose, onChannelCreated }: CreateChannelDialogProps) {
+export function CreateSubchannelDialog({ channelId, onClose, onSubchannelCreated }: CreateSubchannelDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [level, setLevel] = useState<'100' | '200' | '300' | undefined>(undefined);
-  const { createChannel } = useChannel();
+  const [type, setType] = useState<'TEXT' | 'ANNOUNCEMENT' | 'CLASS'>('TEXT');
+  const { createSubchannel } = useChannel();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,23 +27,23 @@ export function CreateChannelDialog({ onClose, onChannelCreated }: CreateChannel
     if (!name.trim()) {
       toast({
         title: "Error",
-        description: "Channel name is required",
+        description: "Subchannel name is required",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      await createChannel(name, description, undefined, false, undefined, undefined, level);
+      await createSubchannel(channelId, name, description, type);
       toast({
         title: "Success",
-        description: "Channel created successfully",
+        description: "Subchannel created successfully",
       });
-      onChannelCreated();
+      onSubchannelCreated();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create channel",
+        description: error.message || "Failed to create subchannel",
         variant: "destructive",
       });
     }
@@ -52,16 +53,19 @@ export function CreateChannelDialog({ onClose, onChannelCreated }: CreateChannel
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create New Channel</DialogTitle>
+          <DialogTitle>Create New Subchannel</DialogTitle>
+          <DialogDescription>
+            Create a new subchannel with the desired type and settings.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Channel Name</Label>
+            <Label htmlFor="name">Subchannel Name</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter channel name"
+              placeholder="Enter subchannel name"
             />
           </div>
           <div className="space-y-2">
@@ -70,19 +74,19 @@ export function CreateChannelDialog({ onClose, onChannelCreated }: CreateChannel
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter channel description"
+              placeholder="Enter subchannel description"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="level">Level</Label>
-            <Select value={level} onValueChange={(value) => setLevel(value as '100' | '200' | '300')}>
+            <Label htmlFor="type">Subchannel Type</Label>
+            <Select value={type} onValueChange={(value) => setType(value as any)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select level" />
+                <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="100">100 Level</SelectItem>
-                <SelectItem value="200">200 Level</SelectItem>
-                <SelectItem value="300">300 Level</SelectItem>
+                <SelectItem value="TEXT">Text Channel</SelectItem>
+                <SelectItem value="ANNOUNCEMENT">Announcements</SelectItem>
+                <SelectItem value="CLASS">Class</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -91,7 +95,7 @@ export function CreateChannelDialog({ onClose, onChannelCreated }: CreateChannel
               Cancel
             </Button>
             <Button type="submit">
-              Create Channel
+              Create Subchannel
             </Button>
           </div>
         </form>

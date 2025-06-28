@@ -306,8 +306,14 @@ export default defineSchema({
     lecturerId: v.id("users"), // The lecturer who manages this channel
     avatar: v.optional(v.string()),
     createdAt: v.number(),
+    level: v.optional(v.union(
+      v.literal("100"),
+      v.literal("200"), 
+      v.literal("300")
+    )),
   })
-  .index("by_lecturer", ["lecturerId"]),
+  .index("by_lecturer", ["lecturerId"])
+  .index("by_level", ["level"]),
 
   // Study Subchannels
   studySubchannels: defineTable({

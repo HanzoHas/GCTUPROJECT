@@ -18,6 +18,7 @@ export type ChannelType = {
   type: "CATEGORY" | "TEXT" | "ANNOUNCEMENT" | "CLASS";
   position: number;
   isPrivate: boolean;
+  level?: "100" | "200" | "300"; // Added level field
   allowedStudentGroups?: string[];
   createdByStudent?: boolean; // Flag to mark student-created channels
   members?: string[]; // Array of user IDs who are members of this channel
@@ -77,8 +78,8 @@ interface ChannelContextType {
   channelError: string | null;
   setCurrentChannel: (channel: ChannelType | null) => void;
   setCurrentSubchannel: (subchannel: SubchannelType | null) => void;
-  createChannel: (name: string, description?: string, type?: "CATEGORY" | "TEXT" | "ANNOUNCEMENT" | "CLASS", isPrivate?: boolean, allowedStudentGroups?: string[], members?: string[]) => Promise<string | undefined>;
-  updateChannel: (channelId: string, data: { name?: string; description?: string; type?: "CATEGORY" | "TEXT" | "ANNOUNCEMENT" | "CLASS"; position?: number; isPrivate?: boolean; allowedStudentGroups?: string[]; members?: string[] }) => Promise<void>;
+  createChannel: (name: string, description?: string, type?: "CATEGORY" | "TEXT" | "ANNOUNCEMENT" | "CLASS", isPrivate?: boolean, allowedStudentGroups?: string[], members?: string[], level?: "100" | "200" | "300") => Promise<string | undefined>;
+  updateChannel: (channelId: string, data: { name?: string; description?: string; type?: "CATEGORY" | "TEXT" | "ANNOUNCEMENT" | "CLASS"; position?: number; isPrivate?: boolean; allowedStudentGroups?: string[]; members?: string[]; level?: "100" | "200" | "300" }) => Promise<void>;
   deleteChannel: (channelId: string) => Promise<void>;
   createSubchannel: (channelId: string, name: string, description?: string, type?: "TEXT" | "ANNOUNCEMENT" | "CLASS", studentGroups?: string[], isPrivate?: boolean) => Promise<string | undefined>;
   updateSubchannel: (subchannelId: string, data: { name?: string; description?: string; studentGroups?: string[]; type?: "TEXT" | "ANNOUNCEMENT" | "CLASS"; position?: number; isPrivate?: boolean }) => Promise<void>;
@@ -292,7 +293,8 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
     type: "CATEGORY" | "TEXT" | "ANNOUNCEMENT" | "CLASS" = "TEXT", 
     isPrivate = false, 
     allowedStudentGroups?: string[],
-    members?: string[]
+    members?: string[],
+    level?: "100" | "200" | "300"
   ) => {
     const sessionToken = getSessionToken();
     if (!sessionToken) return;
@@ -307,7 +309,9 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
           type,
           isPrivate,
           allowedStudentGroups,
-          false // Not a student channel
+          false, // Not a student channel
+          members,
+          level // Pass the level parameter
         );
         await fetchChannels();
         return result?.channelId;
@@ -322,7 +326,8 @@ export function ChannelProvider({ children }: { children: ReactNode }) {
           true, // Always private
           undefined, // No student groups
           true, // Mark as a student channel
-          members // Members explicitly added
+          members, // Members explicitly added
+          level // Pass the level parameter for student channels too
         );
         await fetchChannels();
         return result?.channelId;
