@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChannelType, useChannel, SubchannelType } from '@/contexts/ChannelContext';
 import { Button } from '@/components/ui/button';
-import { X, MessageSquare, Users, Bell } from 'lucide-react';
+import { X, MessageSquare, Users, Bell, Plus } from 'lucide-react';
+import { CreateSubchannelDialog } from './CreateSubchannelDialog';
 
 interface ChannelContentProps {
   channel: ChannelType;
@@ -14,8 +15,11 @@ export function ChannelContent({ channel, onClose }: ChannelContentProps) {
     setCurrentChannel, 
     currentSubchannel, 
     setCurrentSubchannel,
-    isLoadingSubchannels 
+    isLoadingSubchannels,
+    canManageChannel
   } = useChannel();
+  
+  const [isCreatingSubchannel, setIsCreatingSubchannel] = useState(false);
 
   // Set the current channel when this component mounts
   useEffect(() => {
@@ -53,7 +57,19 @@ export function ChannelContent({ channel, onClose }: ChannelContentProps) {
       <div className="flex-1 flex">
         {/* Subchannels sidebar */}
         <div className="w-64 border-r p-4">
-          <h3 className="font-medium mb-3">Subchannels</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium">Subchannels</h3>
+            {canManageChannel(channel._id) && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => setIsCreatingSubchannel(true)}
+                className="h-8 w-8 p-0"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
           
           {isLoadingSubchannels ? (
             <div className="text-center py-4 text-muted-foreground">Loading...</div>
@@ -105,6 +121,15 @@ export function ChannelContent({ channel, onClose }: ChannelContentProps) {
           )}
         </div>
       </div>
+
+      {/* Create Subchannel Dialog */}
+      {isCreatingSubchannel && (
+        <CreateSubchannelDialog
+          channelId={channel._id}
+          onClose={() => setIsCreatingSubchannel(false)}
+          onSubchannelCreated={() => setIsCreatingSubchannel(false)}
+        />
+      )}
     </div>
   );
 }
