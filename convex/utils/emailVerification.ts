@@ -24,7 +24,7 @@ export const sendVerificationEmail = action({
 
     try {
       const data = await resend.emails.send({
-        from: 'GCTU App <noreply@gctuapp.com>',
+        from: 'GCTU App <onboarding@resend.dev>',
         to: email,
         subject: 'Verify Your Email Address',
         html: `

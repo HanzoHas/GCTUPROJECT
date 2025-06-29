@@ -9,6 +9,11 @@ export const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 // Use the generated API for full type safety
 export const api = generatedApi;
 
+// Helper function for ID casting
+function castId<T extends string>(id: string): Id<T> {
+  return id as unknown as Id<T>;
+}
+
 // Utility function to get session token from localStorage
 export const getSessionToken = (): string | null => {
   return localStorage.getItem("sessionToken");
@@ -125,7 +130,7 @@ export const users = {
 
     return convex.query(api.users.getProfile, {
       sessionToken,
-      userId,
+      userId: userId ? castId<"users">(userId) : undefined,
     });
   },
 
@@ -165,7 +170,7 @@ export const users = {
 
     return convex.mutation(api.users.blockUser, {
       sessionToken,
-      targetUserId,
+      targetUserId: castId<"users">(targetUserId),
     });
   },
 
@@ -175,7 +180,7 @@ export const users = {
 
     return convex.mutation(api.users.unblockUser, {
       sessionToken,
-      targetUserId,
+      targetUserId: castId<"users">(targetUserId),
     });
   },
 
@@ -213,10 +218,10 @@ export const messages = {
 
     return convex.mutation(api.messages.sendMessage, {
       sessionToken,
-      conversationId: Id.fromString(conversationId),
+      conversationId: castId<"conversations">(conversationId),
       content,
       type,
-      replyToId: replyToId ? Id.fromString(replyToId) : undefined,
+      replyToId: replyToId ? castId<"messages">(replyToId) : undefined,
     });
   },
 
@@ -226,7 +231,7 @@ export const messages = {
 
     return convex.mutation(api.messages.editMessage, {
       sessionToken,
-      messageId: Id.fromString(messageId),
+      messageId: castId<"messages">(messageId),
       content,
     });
   },
@@ -237,7 +242,7 @@ export const messages = {
 
     return convex.mutation(api.messages.deleteMessage, {
       sessionToken,
-      messageId: Id.fromString(messageId),
+      messageId: castId<"messages">(messageId),
     });
   },
 
@@ -247,7 +252,7 @@ export const messages = {
 
     return convex.mutation(api.messages.markAsRead, {
       sessionToken,
-      messageId: Id.fromString(messageId),
+      messageId: castId<"messages">(messageId),
     });
   },
 
@@ -261,7 +266,7 @@ export const messages = {
 
     return convex.query(api.messages.getMessages, {
       sessionToken,
-      conversationId: Id.fromString(conversationId),
+      conversationId: castId<"conversations">(conversationId),
       limit,
       before,
     });
@@ -273,7 +278,7 @@ export const messages = {
 
     return convex.mutation(api.messages.reactToMessage, {
       sessionToken,
-      messageId: Id.fromString(messageId),
+      messageId: castId<"messages">(messageId),
       emoji,
     });
   },
@@ -285,12 +290,12 @@ export const messages = {
     if (isTyping) {
       return convex.mutation(api.messages.setTypingIndicator, {
         sessionToken,
-        conversationId: Id.fromString(conversationId),
+        conversationId: castId<"conversations">(conversationId),
       });
     } else {
       return convex.mutation(api.messages.clearTypingIndicator, {
         sessionToken,
-        conversationId: Id.fromString(conversationId),
+        conversationId: castId<"conversations">(conversationId),
       });
     }
   },
@@ -301,20 +306,20 @@ export const messages = {
 
     return convex.query(api.messages.getTypingIndicators, {
       sessionToken,
-      conversationId: Id.fromString(conversationId),
+      conversationId: castId<"conversations">(conversationId),
     });
   },
 };
 
 // Conversations API functions
 export const conversations = {
-  createOneOnOne: async (otherUserId: string) => {
+  createDirectConversation: async (otherUserId: string) => {
     const sessionToken = getSessionToken();
     if (!sessionToken) return null;
 
     return convex.mutation(api.conversations.createDirectConversation, {
       sessionToken,
-      otherUserId: Id.fromString(otherUserId),
+      otherUserId: castId<"users">(otherUserId),
     });
   },
   
@@ -363,7 +368,7 @@ export const announcements = {
 
     return convex.query(api.announcements.getAnnouncementById, {
       sessionToken,
-      announcementId: Id.fromString(announcementId),
+      announcementId: castId<"announcements">(announcementId),
     });
   },
 
@@ -373,7 +378,7 @@ export const announcements = {
 
     return convex.mutation(api.announcements.deleteAnnouncement, {
       sessionToken,
-      announcementId: Id.fromString(announcementId),
+      announcementId: castId<"announcements">(announcementId),
     });
   },
 
@@ -390,7 +395,7 @@ export const announcements = {
 
     return convex.mutation(api.announcements.updateAnnouncement, {
       sessionToken,
-      announcementId: Id.fromString(announcementId),
+      announcementId: castId<"announcements">(announcementId),
       ...updates,
     });
   },
@@ -415,7 +420,7 @@ export const notifications = {
 
     return convex.mutation(api.notifications.markNotificationAsRead, {
       sessionToken,
-      notificationId: Id.fromString(notificationId),
+      notificationId: castId<"notifications">(notificationId),
     });
   },
 
@@ -449,7 +454,8 @@ export const notifications = {
 
     return convex.mutation(api.notifications.sendCallNotification, {
       sessionToken,
-      ...params
+      ...params,
+      targetUserId: castId<"users">(params.targetUserId)
     });
   }
 };
@@ -469,7 +475,7 @@ export const activities = {
 
 // Settings API
 export const settings = {
-  get: async () => {
+  getSettings: async () => {
     const sessionToken = getSessionToken();
     if (!sessionToken) return null;
 
@@ -478,7 +484,7 @@ export const settings = {
     });
   },
   
-  update: async (settings: any) => {
+  updateSettings: async (settings: any) => {
     const sessionToken = getSessionToken();
     if (!sessionToken) return { success: false };
 
@@ -529,7 +535,7 @@ export const trending = {
 
     return convex.mutation(api.trending.deletePost, {
       sessionToken,
-      postId: Id.fromString(postId),
+      postId: castId<"posts">(postId),
     });
   },
 
@@ -539,7 +545,7 @@ export const trending = {
 
     return convex.mutation(api.trending.createComment, {
       sessionToken,
-      postId: Id.fromString(postId),
+      postId: castId<"posts">(postId),
       content,
     });
   },
@@ -550,7 +556,7 @@ export const trending = {
 
     return convex.mutation(api.trending.upvotePost, {
       sessionToken,
-      postId: Id.fromString(postId),
+      postId: castId<"posts">(postId),
     });
   },
 
@@ -560,7 +566,7 @@ export const trending = {
 
     return convex.mutation(api.trending.upvoteComment, {
       sessionToken,
-      commentId: Id.fromString(commentId),
+      commentId: castId<"comments">(commentId),
     });
   },
 }; 
