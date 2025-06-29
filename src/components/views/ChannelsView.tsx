@@ -3,7 +3,7 @@ import { useChannel, ChannelType } from '@/contexts/ChannelContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Lock, Plus, Filter } from 'lucide-react';
+import { Search, Lock, Plus, Filter, UserPlus } from 'lucide-react';
 import { ChannelContent } from './ChannelContent';
 import { CreateChannelDialog } from './CreateChannelDialog';
 import {
@@ -12,6 +12,16 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { directApi } from '@/lib/apiWrapper';
 
 function ChannelsView() {
   const { user } = useAuth();
@@ -30,6 +40,12 @@ function ChannelsView() {
     "300": false,
     all: true,
   });
+  const [isJoiningChannel, setIsJoiningChannel] = useState(false);
+  const [joinChannelSearch, setJoinChannelSearch] = useState("");
+  const [availableChannels, setAvailableChannels] = useState<ChannelType[]>([]);
+  const [isSearchingChannels, setIsSearchingChannels] = useState(false);
+  const [selectedJoinChannel, setSelectedJoinChannel] = useState<ChannelType | null>(null);
+  const { toast } = useToast();
 
   // Fetch channels when component mounts
   useEffect(() => {
@@ -92,6 +108,90 @@ function ChannelsView() {
     return filtered;
   }, [userChannels, searchQuery, levelFilter]);
 
+  // Handle searching for channels to join
+  const handleSearchChannels = async () => {
+    if (joinChannelSearch.length < 2) return;
+    
+    setIsSearchingChannels(true);
+    try {
+      const sessionToken = localStorage.getItem('sessionToken') || '';
+      // We'll search for all channels and then filter by name
+      const allChannels = await directApi._callConvexFunction(
+        "channels:getChannelsByLevel", 
+        { sessionToken }
+      );
+      
+      // Filter channels by search term
+      const query = joinChannelSearch.toLowerCase();
+      const filtered = allChannels.filter((channel: ChannelType) => 
+        channel.name.toLowerCase().includes(query) ||
+        channel.description?.toLowerCase().includes(query)
+      );
+      
+      // Filter out channels the user is already a member of
+      const userChannelIds = new Set(userChannels.map(c => c._id));
+      const availableToJoin = filtered.filter((c: ChannelType) => !userChannelIds.has(c._id));
+      
+      setAvailableChannels(availableToJoin);
+    } catch (error) {
+      console.error('Error searching channels:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to search for channels',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSearchingChannels(false);
+    }
+  };
+  
+  // Handle join channel request
+  const handleJoinChannel = async () => {
+    if (!selectedJoinChannel) return;
+    
+    try {
+      const sessionToken = localStorage.getItem('sessionToken') || '';
+      
+      // Join the selected channel using the new joinChannel method
+      await directApi.joinChannel(
+        sessionToken,
+        selectedJoinChannel._id
+      );
+      
+      toast({
+        title: 'Success',
+        description: `Joined channel: ${selectedJoinChannel.name}`,
+      });
+      
+      // Refresh channel list
+      await refreshChannels();
+      
+      // Close the dialog
+      setIsJoiningChannel(false);
+      setSelectedJoinChannel(null);
+      setJoinChannelSearch('');
+      setAvailableChannels([]);
+    } catch (error) {
+      console.error('Error joining channel:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to join channel',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  // Debounce search for join channels
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isJoiningChannel && joinChannelSearch.length >= 2) {
+        handleSearchChannels();
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [joinChannelSearch, isJoiningChannel]);
+
   // Early return if not authenticated
   if (!user) {
     return null;
@@ -118,12 +218,21 @@ function ChannelsView() {
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Channels</h2>
-            <Button 
-              size="sm" 
-              onClick={() => setIsCreatingChannel(true)}
-            >
-              <Plus className="h-4 w-4 mr-1" /> New
-            </Button>
+            <div className="flex gap-1">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setIsJoiningChannel(true)}
+              >
+                <UserPlus className="h-4 w-4 mr-1" /> Join
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={() => setIsCreatingChannel(true)}
+              >
+                <Plus className="h-4 w-4 mr-1" /> New
+              </Button>
+            </div>
           </div>
           
           {/* Search and Filter */}
@@ -238,6 +347,86 @@ function ChannelsView() {
           onChannelCreated={() => setIsCreatingChannel(false)}
         />
       )}
+      
+      {/* Join Channel Dialog */}
+      <Dialog open={isJoiningChannel} onOpenChange={setIsJoiningChannel}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Join Channel</DialogTitle>
+            <DialogDescription>
+              Search for channels by name or description to join
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Input
+                placeholder="Search channels..."
+                value={joinChannelSearch}
+                onChange={(e) => setJoinChannelSearch(e.target.value)}
+              />
+              
+              {isSearchingChannels && (
+                <div className="flex justify-center py-2">
+                  <div className="flex h-6 w-6 animate-spin items-center justify-center rounded-full border-2 border-primary border-t-transparent" />
+                </div>
+              )}
+              
+              {/* Search results */}
+              {!isSearchingChannels && joinChannelSearch.length >= 2 && (
+                <div className="mt-4 max-h-60 overflow-y-auto border rounded-md">
+                  {availableChannels.length > 0 ? (
+                    availableChannels.map(channel => (
+                      <div 
+                        key={channel._id}
+                        className={`p-3 border-b cursor-pointer hover:bg-muted ${
+                          selectedJoinChannel?._id === channel._id ? 'bg-muted' : ''
+                        }`}
+                        onClick={() => setSelectedJoinChannel(channel)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-medium">{channel.name}</h3>
+                            {channel.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {channel.description}
+                              </p>
+                            )}
+                          </div>
+                          {channel.level && (
+                            <span className="text-xs bg-muted px-2 py-1 rounded-full">
+                              Level {channel.level}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Created by: {channel.lecturer?.name || 'Unknown'}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No channels found matching your search
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsJoiningChannel(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleJoinChannel} 
+              disabled={!selectedJoinChannel}
+            >
+              Join Channel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

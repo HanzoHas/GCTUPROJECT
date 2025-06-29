@@ -356,4 +356,13 @@ export default defineSchema({
   .index("by_subchannel", ["subchannelId"])
   .index("by_channel_timestamp", ["channelId", "timestamp"])
   .index("by_subchannel_timestamp", ["subchannelId", "timestamp"]),
+
+  verificationCodes: defineTable({
+    email: v.string(),
+    code: v.string(),
+    expiresAt: v.number(), // timestamp
+    verified: v.boolean(),
+  })
+    .index("by_email", ["email"])
+    .index("by_code", ["code"]),
 }); 

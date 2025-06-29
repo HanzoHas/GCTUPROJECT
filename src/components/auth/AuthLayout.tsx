@@ -1,9 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import AuthForm from './AuthForm';
+import VerificationForm from './VerificationForm';
 import { CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AuthLayout = () => {
+  const { needsVerification } = useAuth();
+
   return (
     <div className="auth-layout">
       {/* Advanced Animated Background with Mesh + Noise */}
@@ -113,7 +117,7 @@ const AuthLayout = () => {
         transition={{ duration: 0.7, delay: 0.2 }}
       >
         <div className="w-full max-w-md glass-card shadow-float p-8 rounded-xl animate-fade-in-blur">
-          <AuthForm />
+          {needsVerification ? <VerificationForm /> : <AuthForm />}
         </div>
       </motion.div>
     </div>

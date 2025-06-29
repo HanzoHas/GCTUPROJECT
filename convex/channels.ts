@@ -365,10 +365,7 @@ export const addChannelMember = mutation({
       throw new ConvexError("Channel not found");
     }
 
-    // Only channel owner or admin can add members
-    if (channel.lecturerId.toString() !== currentUserId.toString() && !user.isAdmin) {
-      throw new ConvexError("You don't have permission to add members to this channel");
-    }
+    // Permission check removed to allow anyone to join channels
 
     // Check if subchannel exists (if provided)
     if (subchannelId) {
@@ -437,6 +434,44 @@ export const removeChannelMember = mutation({
     if (membership) {
       await ctx.db.delete(membership._id);
     }
+
+    return { success: true };
+  },
+});
+
+// Join a channel (self-join for any user)
+export const joinChannel = mutation({
+  args: {
+    sessionToken: sessionTokenValidator,
+    channelId: v.id("studyChannels"),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await getAuthenticatedUser(ctx, args.sessionToken);
+    const { channelId } = args;
+
+    const channel = await ctx.db.get(channelId);
+    if (!channel) {
+      throw new ConvexError("Channel not found");
+    }
+
+    // Check if user is already a member
+    const existingMembership = await ctx.db
+      .query("channelMembers")
+      .withIndex("by_channel_user", (q) => 
+        q.eq("channelId", channelId).eq("userId", userId)
+      )
+      .first();
+
+    if (existingMembership) {
+      return { success: true, message: "Already a member of this channel" };
+    }
+
+    // Add the user as a member
+    await ctx.db.insert("channelMembers", {
+      userId,
+      channelId,
+      joinedAt: Date.now(),
+    });
 
     return { success: true };
   },

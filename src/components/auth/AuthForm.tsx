@@ -21,7 +21,14 @@ const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login, register } = useAuth();
+  const { 
+    login, 
+    register, 
+    sendVerificationCode, 
+    setNeedsVerification, 
+    setVerificationEmail, 
+    setVerificationUsername 
+  } = useAuth();
   const { toast } = useToast();
 
   // Form states
@@ -98,11 +105,28 @@ const AuthForm = () => {
           return;
         }
         
-        await register(username, email, password);
-        toast({
-          title: "Account created!",
-          description: "Your account has been created successfully",
-        });
+        try {
+          // For registration, we first send a verification code
+          await sendVerificationCode(email, username);
+          setNeedsVerification(true);
+          setVerificationEmail(email);
+          setVerificationUsername(username);
+          
+          // The register function will be called after verification
+          toast({
+            title: "Verification Required",
+            description: "We've sent a verification code to your email",
+          });
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("Email verification required")) {
+            // If verification is required, we'll show the verification form
+            setNeedsVerification(true);
+            setVerificationEmail(email);
+            setVerificationUsername(username);
+          } else {
+            throw error; // Re-throw if it's another type of error
+          }
+        }
       }
     } catch (error) {
       toast({
@@ -163,7 +187,7 @@ const AuthForm = () => {
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium flex items-center gap-1.5">
               <Mail className="h-3.5 w-3.5 text-primary" />
-              Email Address
+              Student Email Address
             </Label>
             <div className="relative">
               <motion.div variants={inputVariants} animate={emailValid ? undefined : 'invalid'}>
@@ -172,7 +196,7 @@ const AuthForm = () => {
                   type="email"
                   value={email}
                   onChange={handleEmailChange}
-                  placeholder="your.email@example.com"
+                  placeholder="4231000000@live.gctu.edu.gh"
                   className={`form-input-animated pl-10 ${!emailValid ? 'border-destructive focus-visible:ring-destructive/30' : ''}`}
                   required
                 />

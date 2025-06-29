@@ -21,9 +21,17 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string, confirmPassword: string) => Promise<void>;
+  register: (username: string, email: string, password: string, confirmPassword?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  sendVerificationCode: (email: string, username: string) => Promise<void>;
+  verifyEmailCode: (email: string, code: string) => Promise<boolean>;
+  needsVerification: boolean;
+  setNeedsVerification: (value: boolean) => void;
+  verificationEmail: string;
+  setVerificationEmail: (email: string) => void;
+  verificationUsername: string;
+  setVerificationUsername: (username: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -34,6 +42,14 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   logout: () => {},
   refreshUser: async () => {},
+  sendVerificationCode: async () => {},
+  verifyEmailCode: async () => false,
+  needsVerification: false,
+  setNeedsVerification: () => {},
+  verificationEmail: '',
+  setVerificationEmail: () => {},
+  verificationUsername: '',
+  setVerificationUsername: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -42,6 +58,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [verificationUsername, setVerificationUsername] = useState('');
   const { toast } = useToast();
 
   // Function to check auth status
@@ -121,16 +140,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Login failed");
       }
     } catch (error: any) {
-      toast({
-        title: "Login Failed",
-        description: error.message || "Invalid credentials",
-        variant: "destructive",
-      });
+      // Check if email needs verification
+      if (error.message && error.message.includes("Email verification required")) {
+        setNeedsVerification(true);
+        setVerificationEmail(email);
+        toast({
+          title: "Verification Required",
+          description: "Please verify your email address before logging in.",
+        });
+      } else {
+        toast({
+          title: "Login Failed",
+          description: error.message || "Invalid credentials",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };
 
-  const register = async (username: string, email: string, password: string, confirmPassword: string) => {
+  const register = async (username: string, email: string, password: string, confirmPassword?: string) => {
     try {
       const result = await auth.register(username, email, password, confirmPassword);
       if (result && result.token) {
@@ -152,12 +181,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Registration failed");
       }
     } catch (error: any) {
+      // Check if email needs verification
+      if (error.message && error.message.includes("Email verification required")) {
+        setNeedsVerification(true);
+        setVerificationEmail(email);
+        setVerificationUsername(username);
+        toast({
+          title: "Verification Required",
+          description: "Please verify your email address to complete registration.",
+        });
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: error.message || "Could not create account",
+          variant: "destructive",
+        });
+      }
+      throw error;
+    }
+  };
+
+  const sendVerificationCode = async (email: string, username: string) => {
+    try {
+      await auth.sendVerificationCode(email, username);
       toast({
-        title: "Registration Failed",
-        description: error.message || "Could not create account",
+        title: "Verification Code Sent",
+        description: "Check your email for the verification code. It expires in 10 minutes.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to Send Code",
+        description: error.message || "Could not send verification code",
         variant: "destructive",
       });
       throw error;
+    }
+  };
+
+  const verifyEmailCode = async (email: string, code: string): Promise<boolean> => {
+    try {
+      const result = await auth.verifyEmailCode(email, code);
+      if (result && result.verified) {
+        toast({
+          title: "Email Verified",
+          description: "Your email has been successfully verified.",
+        });
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      toast({
+        title: "Verification Failed",
+        description: error.message || "Invalid or expired verification code",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
@@ -190,7 +268,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        isAuthenticated, 
+        isLoading, 
+        login, 
+        register, 
+        logout, 
+        refreshUser,
+        sendVerificationCode,
+        verifyEmailCode,
+        needsVerification,
+        setNeedsVerification,
+        verificationEmail,
+        setVerificationEmail,
+        verificationUsername,
+        setVerificationUsername
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

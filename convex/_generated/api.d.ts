@@ -26,6 +26,7 @@ import type * as subchannels from "../subchannels.js";
 import type * as trending from "../trending.js";
 import type * as users from "../users.js";
 import type * as utils_auth from "../utils/auth.js";
+import type * as utils_emailVerification from "../utils/emailVerification.js";
 import type * as utils_mediaService from "../utils/mediaService.js";
 import type * as utils_mediaUpload from "../utils/mediaUpload.js";
 import type * as utils_mediaWrapper from "../utils/mediaWrapper.js";
@@ -53,6 +54,7 @@ declare const fullApi: ApiFromModules<{
   trending: typeof trending;
   users: typeof users;
   "utils/auth": typeof utils_auth;
+  "utils/emailVerification": typeof utils_emailVerification;
   "utils/mediaService": typeof utils_mediaService;
   "utils/mediaUpload": typeof utils_mediaUpload;
   "utils/mediaWrapper": typeof utils_mediaWrapper;

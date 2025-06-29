@@ -106,6 +106,9 @@ const functionMap: Record<string, any> = {
   "channels:createChannel": api.channels.createChannel,
   "channels:updateChannel": api.channels.updateChannel,
   "channels:deleteChannel": api.channels.deleteChannel,
+  "channels:getChannelsByLevel": api.channels.getChannelsByLevel,
+  "channels:addChannelMember": api.channels.addChannelMember,
+  "channels:joinChannel": api.channels.joinChannel,
   
   // Subchannels
   "subchannels:getChannelSubchannels": api.subchannels.getChannelSubchannels,
@@ -181,6 +184,43 @@ export const directApi = {
       return await this._callConvexFunction("channels:getLecturerChannels", { sessionToken });
     } catch (error) {
       console.error("Error fetching lecturer channels:", error);
+      throw error;
+    }
+  },
+
+  async getChannelsByLevel(sessionToken: string, level?: "100" | "200" | "300") {
+    try {
+      return await this._callConvexFunction("channels:getChannelsByLevel", { 
+        sessionToken, 
+        level 
+      });
+    } catch (error) {
+      console.error("Error fetching channels by level:", error);
+      throw error;
+    }
+  },
+
+  async addChannelMember(sessionToken: string, channelId: string, userId: string) {
+    try {
+      return await this._callConvexFunction("channels:addChannelMember", {
+        sessionToken,
+        channelId,
+        userId
+      }, true);
+    } catch (error) {
+      console.error("Error adding channel member:", error);
+      throw error;
+    }
+  },
+
+  async joinChannel(sessionToken: string, channelId: string) {
+    try {
+      return await this._callConvexFunction("channels:joinChannel", {
+        sessionToken,
+        channelId
+      }, true);
+    } catch (error) {
+      console.error("Error joining channel:", error);
       throw error;
     }
   },

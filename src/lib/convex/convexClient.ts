@@ -19,8 +19,7 @@ export const api = {
     getUserChannels: "channels:getUserChannels",
     addChannelMember: "channels:addChannelMember",
     removeChannelMember: "channels:removeChannelMember",
-    getChannelsByLevel: "channels:getChannelsByLevel",
-    joinChannel: "channels:joinChannel"
+    getChannelsByLevel: "channels:getChannelsByLevel"
   },
   subchannels: {
     createSubchannel: "subchannels:createSubchannel",
