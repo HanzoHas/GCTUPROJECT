@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "codegen": "npx convex codegen",
-    "build": "npm run codegen && vite build",
+    "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
