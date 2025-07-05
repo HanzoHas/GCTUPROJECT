@@ -269,6 +269,9 @@ export const sendVerificationCode = mutation({
       .first();
 
     if (existingCode) {
+      if (!existingCode.passwordHash && !passwordHash) {
+        throw new ConvexError("Password is required to continue registration");
+      }
       await ctx.db.patch(existingCode._id, {
         code,
         expiresAt,
