@@ -1,18 +1,28 @@
-import { Resend } from 'resend';
+"use node";
+
+// Using the MailerSend REST API directly via fetch to avoid extra Node built-in dependencies
 import { action } from '../_generated/server';
 import { v } from 'convex/values';
 import { ConvexError } from 'convex/values';
 
-// Initialize Resend with API key
-// Note: You'll need to set this API key in environment variables
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Define Email payload interface for clarity
+type MailerSendEmail = {
+  from: { email: string; name: string };
+  to: { email: string; name?: string }[];
+  subject: string;
+  html: string;
+  text: string;
+};
+
+
+
 
 // Generate a random 6-digit verification code
 export function generateVerificationCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Send verification email using Resend
+// Send verification email using MailerSend
 export const sendVerificationEmail = action({
   args: {
     email: v.string(),
@@ -23,11 +33,8 @@ export const sendVerificationEmail = action({
     const { email, code, username } = args;
 
     try {
-      const data = await resend.emails.send({
-        from: 'GCTU App <onboarding@resend.dev>',
-        to: email,
-        subject: 'Verify Your Email Address',
-        html: `
+      // Build email HTML
+      const htmlContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
             <h2 style="color: #333; text-align: center;">Email Verification</h2>
             <p>Hello ${username},</p>
@@ -41,8 +48,32 @@ export const sendVerificationEmail = action({
               &copy; ${new Date().getFullYear()} GCTU App. All rights reserved.
             </p>
           </div>
-        `,
+        `;
+
+            const payload: MailerSendEmail = {
+        from: { email: 'no-reply@mailersend.net', name: 'GCTU App' },
+        to: [{ email, name: username }],
+        subject: 'Verify Your Email Address',
+        html: htmlContent,
+        text: `Your verification code is ${code}`,
+      };
+
+      const response = await fetch('https://api.mailersend.com/v1/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.MAILERSEND_API_KEY}`,
+        },
+        body: JSON.stringify(payload),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('MailerSend API error:', errorText);
+        throw new Error('MailerSend API request failed');
+      }
+
+      const data = await response.json();
 
       return { success: true, data };
     } catch (error) {

@@ -1,6 +1,6 @@
 ## Email Verification Setup
 
-The application uses Resend.com for email verification. To set it up:
+The application now uses [MailerSend](https://mailersend.com) for email verification. If you don’t own a custom domain you can still send emails by verifying a single sender (an individual email address) inside the MailerSend dashboard. Follow these steps to get started:
 
 1. Create an account on [Resend.com](https://resend.com) if you don't have one
 2. Get your API key from the Resend dashboard
@@ -13,8 +13,8 @@ npm install -g convex
 # Login to Convex
 npx convex login
 
-# Set the Resend API key
-npx convex env set RESEND_API_KEY "your_resend_api_key"
+# Set the MailerSend API key
+npx convex env set MAILERSEND_API_KEY "your_mailersend_api_key"
 
 # Verify the variable was set correctly
 npx convex env ls
