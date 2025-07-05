@@ -99,7 +99,7 @@ export const register = mutation({
   },
 });
 
-// Login with email and password
+// Login with email and password (2-step: password check → email code → verifyEmailCode)
 export const login = mutation({
   args: {
     email: v.string(),
@@ -114,47 +114,38 @@ export const login = mutation({
       .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
       .first();
 
-    if (!user) {
+    if (!user || !verifyPassword(password, user.passwordHash)) {
       throw new ConvexError("Invalid email or password");
     }
 
-    // Verify password
-    if (!verifyPassword(password, user.passwordHash)) {
-      throw new ConvexError("Invalid email or password");
-    }
+    // Generate a fresh verification code for this login attempt
+    const code = generateVerificationCode();
+    const expiresAt = getExpirationTime();
 
-    // Check if email is verified
-    const verificationRecord = await ctx.db
+    const existingCode = await ctx.db
       .query("verificationCodes")
       .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
       .first();
 
-    if (!verificationRecord || !verificationRecord.verified) {
-      throw new ConvexError("Email verification required");
+    if (existingCode) {
+      await ctx.db.patch(existingCode._id, {
+        code,
+        expiresAt,
+        verified: false,
+      });
+    } else {
+      await ctx.db.insert("verificationCodes", {
+        email: email.toLowerCase(),
+        username: user.username,
+        passwordHash: user.passwordHash,
+        code,
+        expiresAt,
+        verified: false,
+      });
     }
 
-    // Create a session
-    const token = generateSessionToken();
-    const expiresAt = Date.now() + SESSION_DURATION;
-
-    await ctx.db.insert("sessions", {
-      userId: user._id,
-      token,
-      expiresAt,
-    });
-
-    // Update user status and presence
-    await ctx.db.patch(user._id, {
-      status: "Available",
-    });
-
-    await ctx.db.insert("presence", {
-      userId: user._id,
-      lastSeen: Date.now(),
-      isOnline: true,
-    });
-
-    return { token, userId: user._id };
+    // The client should now call sendVerificationEmail action with { email, code, username }
+    return { success: true, codeSent: true };
   },
 });
 
@@ -246,14 +237,24 @@ export const sendVerificationCode = mutation({
   args: {
     email: v.string(),
     username: v.string(),
+    password: v.string(),
+    confirmPassword: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { email, username } = args;
+    const { email, username, password, confirmPassword } = args;
 
     // Validate email domain
     if (!validateSchoolEmail(email)) {
       throw new ConvexError("Registration requires a school domain email");
     }
+
+    // Validate password confirmation
+    if (confirmPassword && password !== confirmPassword) {
+      throw new ConvexError("Passwords do not match");
+    }
+
+    // Hash password for temporary storage
+    const passwordHash = hashPassword(password);
 
     // Generate a verification code
     const code = generateVerificationCode();
@@ -270,11 +271,15 @@ export const sendVerificationCode = mutation({
         code,
         expiresAt,
         verified: false,
+        username,
+        passwordHash,
       });
     } else {
       // Create a new verification code record
       await ctx.db.insert("verificationCodes", {
         email: email.toLowerCase(),
+        username,
+        passwordHash,
         code,
         expiresAt,
         verified: false,
@@ -320,6 +325,46 @@ export const verifyEmailCode = mutation({
       verified: true,
     });
 
-    return { success: true, verified: true };
+    // Create user account if it doesn't exist yet
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
+      .first();
+
+    if (!user) {
+      const userId = await ctx.db.insert("users", {
+        email: email.toLowerCase(),
+        username: verificationRecord.username,
+        passwordHash: verificationRecord.passwordHash,
+        status: "Available",
+        isAdmin: false,
+        blockedUsers: [],
+        isHidden: false,
+      });
+
+      user = await ctx.db.get(userId);
+      if (!user) {
+        throw new ConvexError("Failed to create user after verification");
+      }
+
+      // Create presence record
+      await ctx.db.insert("presence", {
+        userId,
+        lastSeen: Date.now(),
+        isOnline: true,
+      });
+    }
+
+    // Create session token
+    const token = generateSessionToken();
+    const expiresAt = Date.now() + SESSION_DURATION;
+
+    await ctx.db.insert("sessions", {
+      userId: user._id,
+      token,
+      expiresAt,
+    });
+
+    return { success: true, verified: true, token, userId: user._id };
   },
 }); 

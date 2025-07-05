@@ -359,6 +359,8 @@ export default defineSchema({
 
   verificationCodes: defineTable({
     email: v.string(),
+    username: v.string(),
+    passwordHash: v.string(),
     code: v.string(),
     expiresAt: v.number(), // timestamp
     verified: v.boolean(),
