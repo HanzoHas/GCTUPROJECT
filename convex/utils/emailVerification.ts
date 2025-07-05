@@ -7,7 +7,8 @@ import { ConvexError } from 'convex/values';
 
 // Define Email payload interface for clarity
 type MailerSendEmail = {
-  from: { email: string; name: string };
+  from?: { email: string; name?: string };
+  domain_id?: string;
   to: { email: string; name?: string }[];
   subject: string;
   html: string;
@@ -50,8 +51,13 @@ export const sendVerificationEmail = action({
           </div>
         `;
 
-            const payload: MailerSendEmail = {
-        from: { email: 'no-reply@mailersend.net', name: 'GCTU App' },
+                  const fromEmail = process.env.MAILERSEND_FROM_EMAIL || 'no-reply@mailersend.net';
+      const domainId = process.env.MAILERSEND_DOMAIN_ID; // optional
+
+      const payload: MailerSendEmail = {
+        ...(domainId
+          ? { domain_id: domainId }
+          : { from: { email: fromEmail, name: 'GCTU App' } }),
         to: [{ email, name: username }],
         subject: 'Verify Your Email Address',
         html: htmlContent,
