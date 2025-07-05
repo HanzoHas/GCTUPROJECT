@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "npx convex codegen", 
-    "build": "vite build",
+    "codegen": "npx convex codegen",
+    "build": "npm run codegen && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
