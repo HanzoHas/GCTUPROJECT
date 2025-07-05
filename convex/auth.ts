@@ -298,11 +298,9 @@ export const verifyEmailCode = mutation({
   args: {
     email: v.string(),
     code: v.string(),
-    username: v.string(),
-    password: v.string(),
   },
   handler: async (ctx, args) => {
-    const { email, code, username: providedUsername, password } = args;
+    const { email, code } = args;
 
     // Find the verification code
     const verificationRecord = await ctx.db
@@ -337,13 +335,13 @@ export const verifyEmailCode = mutation({
 
     if (!user) {
       // Determine username and passwordHash – may come from the verification record or from the client args
-      const finalUsername = providedUsername;
-      const finalPasswordHash = hashPassword(password);
+      const finalUsername = verificationRecord.username;
+      const finalPasswordHash = verificationRecord.passwordHash;
 
       const userId = await ctx.db.insert("users", {
         email: email.toLowerCase(),
-        username: finalUsername,
-        passwordHash: finalPasswordHash,
+        username: finalUsername!,
+        passwordHash: finalPasswordHash!,
         status: "Available",
         isAdmin: false,
         blockedUsers: [],
