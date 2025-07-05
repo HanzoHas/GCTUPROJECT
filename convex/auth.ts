@@ -277,11 +277,14 @@ export const sendVerificationCode = mutation({
         ...(passwordHash ? { passwordHash } : {}),
       });
     } else {
-      // Create a new verification code record
+      // New registration: password is mandatory
+      if (!passwordHash) {
+        throw new ConvexError("Password is required for first-time registration");
+      }
       await ctx.db.insert("verificationCodes", {
         email: email.toLowerCase(),
         username,
-        ...(passwordHash ? { passwordHash } : {}),
+        passwordHash,
         code,
         expiresAt,
         verified: false,
