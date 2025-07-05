@@ -332,10 +332,13 @@ export const verifyEmailCode = mutation({
       .first();
 
     if (!user) {
+      if (!verificationRecord.username || !verificationRecord.passwordHash) {
+        throw new ConvexError("Missing registration details; please restart sign-up.");
+      }
       const userId = await ctx.db.insert("users", {
         email: email.toLowerCase(),
-        username: verificationRecord.username,
-        passwordHash: verificationRecord.passwordHash,
+        username: verificationRecord.username!,
+        passwordHash: verificationRecord.passwordHash!,
         status: "Available",
         isAdmin: false,
         blockedUsers: [],
