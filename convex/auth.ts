@@ -298,8 +298,8 @@ export const verifyEmailCode = mutation({
   args: {
     email: v.string(),
     code: v.string(),
-    username: v.optional(v.string()),
-    password: v.optional(v.string()),
+    username: v.string(),
+    password: v.string(),
   },
   handler: async (ctx, args) => {
     const { email, code, username: providedUsername, password } = args;
@@ -337,19 +337,8 @@ export const verifyEmailCode = mutation({
 
     if (!user) {
       // Determine username and passwordHash – may come from the verification record or from the client args
-      const finalUsername = verificationRecord.username ?? providedUsername;
-      let finalPasswordHash = verificationRecord.passwordHash;
-
-      if (!finalPasswordHash) {
-        if (!password) {
-          throw new ConvexError("Password required to complete registration");
-        }
-        finalPasswordHash = hashPassword(password);
-      }
-
-      if (!finalUsername) {
-        throw new ConvexError("Username required to complete registration");
-      }
+      const finalUsername = providedUsername;
+      const finalPasswordHash = hashPassword(password);
 
       const userId = await ctx.db.insert("users", {
         email: email.toLowerCase(),
