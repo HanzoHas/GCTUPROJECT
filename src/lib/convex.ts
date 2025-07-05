@@ -91,10 +91,17 @@ export const auth = {
   },
 
   // Add new verification code functions
-  sendVerificationCode: async (email: string, username: string) => {
+  sendVerificationCode: async (
+    email: string,
+    username: string,
+    password?: string,
+    confirmPassword?: string
+  ) => {
     const result = await convex.mutation(api.auth.sendVerificationCode, {
       email,
       username,
+      ...(password ? { password } : {}),
+      ...(confirmPassword ? { confirmPassword } : {}),
     });
     
     if (result && result.success && result.code) {
@@ -109,10 +116,17 @@ export const auth = {
     return result;
   },
 
-  verifyEmailCode: async (email: string, code: string) => {
+  verifyEmailCode: async (
+    email: string,
+    code: string,
+    username?: string,
+    password?: string
+  ) => {
     return convex.mutation(api.auth.verifyEmailCode, {
       email,
       code,
+      ...(username ? { username } : {}),
+      ...(password ? { password } : {}),
     });
   },
 };

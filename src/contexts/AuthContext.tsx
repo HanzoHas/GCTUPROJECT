@@ -24,7 +24,7 @@ interface AuthContextType {
   register: (username: string, email: string, password: string, confirmPassword?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
-  sendVerificationCode: (email: string, username: string) => Promise<void>;
+  sendVerificationCode: (email: string, username: string, password?: string, confirmPassword?: string) => Promise<void>;
   verifyEmailCode: (email: string, code: string) => Promise<boolean>;
   needsVerification: boolean;
   setNeedsVerification: (value: boolean) => void;
@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   logout: () => {},
   refreshUser: async () => {},
-  sendVerificationCode: async () => {},
+  sendVerificationCode: async (_email?: string, _username?: string, _password?: string, _confirmPassword?: string) => {},
   verifyEmailCode: async () => false,
   needsVerification: false,
   setNeedsVerification: () => {},
@@ -61,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [needsVerification, setNeedsVerification] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState('');
   const [verificationUsername, setVerificationUsername] = useState('');
+  const [pendingPassword, setPendingPassword] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Function to check auth status
@@ -201,9 +202,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const sendVerificationCode = async (email: string, username: string) => {
+  const sendVerificationCode = async (
+    email: string,
+    username: string,
+    password?: string,
+    confirmPassword?: string
+  ) => {
     try {
-      await auth.sendVerificationCode(email, username);
+      // If first time (password provided), store it for later verification
+      if (password) {
+        setPendingPassword(password);
+        localStorage.setItem("pendingPassword", password);
+      }
+      const storedPassword = password ?? pendingPassword ?? localStorage.getItem("pendingPassword") ?? undefined;
+      await auth.sendVerificationCode(email, username, storedPassword, confirmPassword ?? storedPassword);
       toast({
         title: "Verification Code Sent",
         description: "Check your email for the verification code. It expires in 10 minutes.",
@@ -219,9 +231,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const verifyEmailCode = async (email: string, code: string): Promise<boolean> => {
+    const passwordForVerify = pendingPassword ?? localStorage.getItem("pendingPassword") ?? undefined;
     try {
-      const result = await auth.verifyEmailCode(email, code);
+      const result = await auth.verifyEmailCode(email, code, verificationUsername || undefined, passwordForVerify || undefined);
       if (result && result.verified) {
+        // clear stored password
+        if (passwordForVerify) {
+          localStorage.removeItem("pendingPassword");
+          setPendingPassword(null);
+        }
         toast({
           title: "Email Verified",
           description: "Your email has been successfully verified.",

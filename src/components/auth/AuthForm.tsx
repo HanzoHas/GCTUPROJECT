@@ -107,7 +107,7 @@ const AuthForm = () => {
         
         try {
           // For registration, we first send a verification code
-          await sendVerificationCode(email, username);
+          await sendVerificationCode(email, username, password, confirmPassword);
           setNeedsVerification(true);
           setVerificationEmail(email);
           setVerificationUsername(username);
