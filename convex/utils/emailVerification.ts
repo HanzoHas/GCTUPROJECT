@@ -1,18 +1,17 @@
 "use node";
 
-// Using the MailerSend REST API directly via fetch to avoid extra Node built-in dependencies
+// Using the Brevo (Sendinblue) REST API directly via fetch to avoid extra Node built-in dependencies
 import { action } from '../_generated/server';
 import { v } from 'convex/values';
 import { ConvexError } from 'convex/values';
 
-// Define Email payload interface for clarity
-type MailerSendEmail = {
-  from?: { email: string; name?: string };
-  domain_id?: string;
+// Define Brevo (Sendinblue) email payload interface for clarity
+type BrevoEmailPayload = {
+  sender: { email: string; name?: string };
   to: { email: string; name?: string }[];
   subject: string;
-  html: string;
-  text: string;
+  htmlContent: string;
+  textContent: string;
 };
 
 
@@ -23,7 +22,7 @@ export function generateVerificationCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Send verification email using MailerSend
+// Send verification email using Brevo (Sendinblue)
 export const sendVerificationEmail = action({
   args: {
     email: v.string(),
@@ -51,32 +50,29 @@ export const sendVerificationEmail = action({
           </div>
         `;
 
-                  const fromEmail = process.env.MAILERSEND_FROM_EMAIL || 'no-reply@mailersend.net';
-      const domainId = process.env.MAILERSEND_DOMAIN_ID; // optional
+                  const fromEmail = process.env.BREVO_FROM_EMAIL || 'no-reply@gctu.app';
 
-      const payload: MailerSendEmail = {
-        ...(domainId
-          ? { domain_id: domainId }
-          : { from: { email: fromEmail, name: 'GCTU App' } }),
+      const payload: BrevoEmailPayload = {
+        sender: { email: fromEmail, name: 'GCTU App' },
         to: [{ email, name: username }],
         subject: 'Verify Your Email Address',
-        html: htmlContent,
-        text: `Your verification code is ${code}`,
+        htmlContent: htmlContent,
+        textContent: `Your verification code is ${code}`,
       };
 
-      const response = await fetch('https://api.mailersend.com/v1/email', {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.MAILERSEND_API_KEY}`,
+          'api-key': process.env.BREVO_API_KEY as string,
         },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('MailerSend API error:', errorText);
-        throw new Error('MailerSend API request failed');
+        console.error('Brevo API error:', errorText);
+        throw new Error('Brevo API request failed');
       }
 
       const data = await response.json();
