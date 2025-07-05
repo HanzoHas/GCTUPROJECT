@@ -237,7 +237,7 @@ export const sendVerificationCode = mutation({
   args: {
     email: v.string(),
     username: v.string(),
-    password: v.string(),
+    password: v.optional(v.string()),
     confirmPassword: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
