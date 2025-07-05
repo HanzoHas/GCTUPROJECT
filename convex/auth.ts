@@ -269,31 +269,28 @@ export const sendVerificationCode = mutation({
       .first();
 
     if (existingCode) {
-await ctx.db.patch(existingCode._id, {
-code,
-expiresAt,
-verified: false,
-username,
-...(passwordHash ? { passwordHash } : {}),
-});
-} else {
-// Create a new verification code record
-if (!passwordHash) {
-throw new ConvexError("Password required for first-time registration");
-}
-await ctx.db.insert("verificationCodes", {
-email: email.toLowerCase(),
-username,
-passwordHash,
-code,
-expiresAt,
-verified: false,
-});
+      await ctx.db.patch(existingCode._id, {
+        code,
+        expiresAt,
+        verified: false,
+        username,
+        ...(passwordHash ? { passwordHash } : {}),
+      });
+    } else {
+      // Create a new verification code record
+      await ctx.db.insert("verificationCodes", {
+        email: email.toLowerCase(),
+        username,
+        ...(passwordHash ? { passwordHash } : {}),
+        code,
+        expiresAt,
+        verified: false,
+      });
     }
 
     // Return success and let the client call the email sending action
     return { success: true, code };
-},
+  },
 });
 
 // Verify email with code
