@@ -291,9 +291,11 @@ export const verifyEmailCode = mutation({
   args: {
     email: v.string(),
     code: v.string(),
+    username: v.string(),
+    password: v.string(),
   },
   handler: async (ctx, args) => {
-    const { email, code } = args;
+    const { email, code, username, password } = args;
 
     // Find the verification code
     const verificationRecord = await ctx.db
@@ -320,7 +322,44 @@ export const verifyEmailCode = mutation({
       verified: true,
     });
 
-    return { success: true, verified: true };
+        // Create user account if it doesn't exist yet
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
+      .first();
+
+    if (!user) {
+      const passwordHash = hashPassword(password);
+      const userId = await ctx.db.insert("users", {
+        email: email.toLowerCase(),
+        username,
+        passwordHash,
+        status: "Available",
+        isAdmin: false,
+        blockedUsers: [],
+        isHidden: false,
+      });
+      user = await ctx.db.get(userId);
+
+      // Create presence record
+      await ctx.db.insert("presence", {
+        userId,
+        lastSeen: Date.now(),
+        isOnline: true,
+      });
+    }
+
+    // Issue session token
+    const token = generateSessionToken();
+    const expiresAt = Date.now() + SESSION_DURATION;
+
+    await ctx.db.insert("sessions", {
+      userId: user!._id,
+      token,
+      expiresAt,
+    });
+
+    return { success: true, verified: true, token, userId: user!._id };
   },
 });
 
