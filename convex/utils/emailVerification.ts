@@ -1,22 +1,18 @@
-import { MailerSend, EmailParams, Recipient, Sender } from 'mailersend';
+import { Resend } from 'resend';
 import { action } from '../_generated/server';
 import { v } from 'convex/values';
 import { ConvexError } from 'convex/values';
 
-// MailerSend API key – ensure this is set in your Convex environment variables
-const MAILERSEND_API_KEY = process.env.MAILERSEND_API_KEY;
-
-// Initialize SDK
-const mailersend = new MailerSend({
-  apiKey: MAILERSEND_API_KEY ?? '',
-});
+// Initialize Resend with API key
+// Note: You'll need to set this API key in environment variables
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Generate a random 6-digit verification code
 export function generateVerificationCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Send verification email using MailerSend
+// Send verification email using Resend
 export const sendVerificationEmail = action({
   args: {
     email: v.string(),
@@ -27,7 +23,11 @@ export const sendVerificationEmail = action({
     const { email, code, username } = args;
 
     try {
-      const htmlContent = `
+      const data = await resend.emails.send({
+        from: 'GCTU App <onboarding@resend.dev>',
+        to: email,
+        subject: 'Verify Your Email Address',
+        html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
             <h2 style="color: #333; text-align: center;">Email Verification</h2>
             <p>Hello ${username},</p>
@@ -41,18 +41,8 @@ export const sendVerificationEmail = action({
               &copy; ${new Date().getFullYear()} GCTU App. All rights reserved.
             </p>
           </div>
-`;
-
-       const recipients = [new Recipient(email, username)];
-
-      const emailParams = new EmailParams()
-        .setFrom(new Sender('noreply@mailersend.net', 'GCTU App'))
-        .setTo(recipients)
-        .setSubject('Verify Your Email Address')
-        .setHtml(htmlContent)
-        .setText(`Hello ${username}, your verification code is ${code}`);
-
-      const data = await mailersend.email.send(emailParams);
+        `,
+      });
 
       return { success: true, data };
     } catch (error) {
