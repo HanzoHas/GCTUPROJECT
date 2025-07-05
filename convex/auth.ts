@@ -242,19 +242,21 @@ export const sendVerificationCode = mutation({
   },
   handler: async (ctx, args) => {
     const { email, username, password, confirmPassword } = args;
+    let passwordHash: string | undefined = undefined;
 
     // Validate email domain
     if (!validateSchoolEmail(email)) {
       throw new ConvexError("Registration requires a school domain email");
     }
 
-    // Validate password confirmation
-    if (confirmPassword && password !== confirmPassword) {
-      throw new ConvexError("Passwords do not match");
+    if (password) {
+      // Validate password confirmation (if field provided)
+      if (confirmPassword && password !== confirmPassword) {
+        throw new ConvexError("Passwords do not match");
+      }
+      // Hash password for temporary storage
+      passwordHash = hashPassword(password);
     }
-
-    // Hash password for temporary storage
-    const passwordHash = hashPassword(password);
 
     // Generate a verification code
     const code = generateVerificationCode();
