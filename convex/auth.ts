@@ -322,4 +322,68 @@ export const verifyEmailCode = mutation({
 
     return { success: true, verified: true };
   },
+});
+
+// Complete registration after email has been verified
+export const completeRegistration = mutation({
+  args: {
+    email: v.string(),
+    username: v.string(),
+    password: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { email, username, password } = args;
+
+    // Ensure email has a verified code
+    const verificationRecord = await ctx.db
+      .query("verificationCodes")
+      .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
+      .first();
+
+    if (!verificationRecord || !verificationRecord.verified) {
+      throw new ConvexError("Email not verified yet");
+    }
+
+    // Prevent duplicate accounts
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
+      .first();
+
+    if (existingUser) {
+      throw new ConvexError("User already exists – please log in");
+    }
+
+    // Hash password and create user
+    const passwordHash = hashPassword(password);
+
+    const userId = await ctx.db.insert("users", {
+      email: email.toLowerCase(),
+      username,
+      passwordHash,
+      status: "Available",
+      isAdmin: false,
+      blockedUsers: [],
+      isHidden: false,
+    });
+
+    // Create presence
+    await ctx.db.insert("presence", {
+      userId,
+      lastSeen: Date.now(),
+      isOnline: true,
+    });
+
+    // Issue session token
+    const token = generateSessionToken();
+    const expiresAt = Date.now() + SESSION_DURATION;
+
+    await ctx.db.insert("sessions", {
+      userId,
+      token,
+      expiresAt,
+    });
+
+    return { success: true, token, userId };
+  },
 }); 
