@@ -246,9 +246,19 @@ export const sendVerificationCode = mutation({
   args: {
     email: v.string(),
     username: v.string(),
+    password: v.optional(v.string()),
+    confirmPassword: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { email, username } = args;
+    const { email, username, password, confirmPassword } = args;
+    let passwordHash: string | undefined = undefined;
+
+    if (password) {
+      if (confirmPassword && password !== confirmPassword) {
+        throw new ConvexError("Passwords do not match");
+      }
+      passwordHash = hashPassword(password);
+    }
 
     // Validate email domain
     if (!validateSchoolEmail(email)) {
@@ -270,11 +280,15 @@ export const sendVerificationCode = mutation({
         code,
         expiresAt,
         verified: false,
+        username,
+        ...(passwordHash ? { passwordHash } : {}),
       });
     } else {
       // Create a new verification code record
       await ctx.db.insert("verificationCodes", {
         email: email.toLowerCase(),
+        username,
+        ...(passwordHash ? { passwordHash } : {}),
         code,
         expiresAt,
         verified: false,
@@ -291,8 +305,8 @@ export const verifyEmailCode = mutation({
   args: {
     email: v.string(),
     code: v.string(),
-    username: v.string(),
-    password: v.string(),
+    username: v.optional(v.string()),
+    password: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { email, code, username, password } = args;
@@ -329,11 +343,29 @@ export const verifyEmailCode = mutation({
       .first();
 
     if (!user) {
-      const passwordHash = hashPassword(password);
+      // Determine final username and passwordHash
+      const finalUsername = verificationRecord.username ?? username;
+      let finalPasswordHash = verificationRecord.passwordHash;
+
+      if (!finalPasswordHash) {
+        if (!password) {
+          throw new ConvexError("Password required to complete registration");
+        }
+        finalPasswordHash = hashPassword(password);
+        // Persist the hash on the verification record for possible future retries
+        await ctx.db.patch(verificationRecord._id, {
+          passwordHash: finalPasswordHash,
+        });
+      }
+
+      if (!finalUsername) {
+        throw new ConvexError("Username required to complete registration");
+      }
+
       const userId = await ctx.db.insert("users", {
         email: email.toLowerCase(),
-        username,
-        passwordHash,
+        username: finalUsername,
+        passwordHash: finalPasswordHash,
         status: "Available",
         isAdmin: false,
         blockedUsers: [],
