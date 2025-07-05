@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Users, Video } from 'lucide-react';
-import { useZego } from '@/contexts/ZegoContext';
+import { useLiveKit } from '@/contexts/LiveKitContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -18,7 +18,7 @@ const GroupCallButton: React.FC<GroupCallButtonProps> = ({
   showText = false,
   size = 'default'
 }) => {
-  const { joinCall } = useZego();
+  const { joinCall } = useLiveKit();
   
   const handleClick = () => {
     if (!groupId || groupId.trim() === '') {

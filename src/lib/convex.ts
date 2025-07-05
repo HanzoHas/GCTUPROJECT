@@ -577,4 +577,12 @@ export const trending = {
       commentId,
     });
   },
+};
+
+// LiveKit API functions
+export const livekit = {
+  getToken: async (params: { roomId: string; userId: string; userName: string; audio: boolean; video: boolean; }) => {
+    // Casting because generated API namespaced path may vary until codegen runs
+    return convex.action((api as any).livekit.getToken as any, params);
+  },
 }; 
