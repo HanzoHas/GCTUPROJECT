@@ -269,28 +269,31 @@ export const sendVerificationCode = mutation({
       .first();
 
     if (existingCode) {
-      await ctx.db.patch(existingCode._id, {
-        code,
-        expiresAt,
-        verified: false,
-        username,
-        passwordHash,
-      });
-    } else {
-      // Create a new verification code record
-      await ctx.db.insert("verificationCodes", {
-        email: email.toLowerCase(),
-        username,
-        passwordHash,
-        code,
-        expiresAt,
-        verified: false,
-      });
+await ctx.db.patch(existingCode._id, {
+code,
+expiresAt,
+verified: false,
+username,
+...(passwordHash ? { passwordHash } : {}),
+});
+} else {
+// Create a new verification code record
+if (!passwordHash) {
+throw new ConvexError("Password required for first-time registration");
+}
+await ctx.db.insert("verificationCodes", {
+email: email.toLowerCase(),
+username,
+passwordHash,
+code,
+expiresAt,
+verified: false,
+});
     }
 
     // Return success and let the client call the email sending action
     return { success: true, code };
-  },
+},
 });
 
 // Verify email with code
@@ -298,9 +301,11 @@ export const verifyEmailCode = mutation({
   args: {
     email: v.string(),
     code: v.string(),
+    username: v.optional(v.string()),
+    password: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { email, code } = args;
+    const { email, code, username: providedUsername, password } = args;
 
     // Find the verification code
     const verificationRecord = await ctx.db
@@ -334,13 +339,25 @@ export const verifyEmailCode = mutation({
       .first();
 
     if (!user) {
-      if (!verificationRecord.username || !verificationRecord.passwordHash) {
-        throw new ConvexError("Missing registration details; please restart sign-up.");
+      // Determine username and passwordHash – may come from the verification record or from the client args
+      const finalUsername = verificationRecord.username ?? providedUsername;
+      let finalPasswordHash = verificationRecord.passwordHash;
+
+      if (!finalPasswordHash) {
+        if (!password) {
+          throw new ConvexError("Password required to complete registration");
+        }
+        finalPasswordHash = hashPassword(password);
       }
+
+      if (!finalUsername) {
+        throw new ConvexError("Username required to complete registration");
+      }
+
       const userId = await ctx.db.insert("users", {
         email: email.toLowerCase(),
-        username: verificationRecord.username!,
-        passwordHash: verificationRecord.passwordHash!,
+        username: finalUsername,
+        passwordHash: finalPasswordHash,
         status: "Available",
         isAdmin: false,
         blockedUsers: [],
