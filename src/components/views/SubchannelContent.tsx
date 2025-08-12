@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GroupCallButton from '@/components/calls/GroupCallButton';
 import { useZego } from '@/contexts/ZegoContext';
 import { useMutation } from 'convex/react';
-import { api, convex } from '@/lib/convex';
+import { api, convex, castId } from '@/lib/convex';
 
 interface SubchannelContentProps {
   channel: ChannelType;
@@ -49,11 +49,10 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
       if (!sessionToken) return;
       
       // Use the Convex API to fetch messages for this subchannel
-      // Convert string ID to the expected Id<"conversations"> type
-      const conversationId = { __tableName: "conversations", ...JSON.parse(JSON.stringify(subchannel._id)) };
+      // Convert string ID to the expected Id<"conversations"> type using the castId helper
+      const conversationId = castId<"conversations">(subchannel._id);
       
       // Use the Convex API to fetch messages for this subchannel
-      // We need to use convex.query instead of directly calling the function
       const response = await convex.query(api.messages.getMessages, {
         sessionToken,
         conversationId
@@ -97,9 +96,8 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
     
     try {
       // Send message using the Convex API
-      // Convert string ID to the expected Id<"conversations"> type
-      // This is a workaround for the type mismatch
-      const conversationId = { __tableName: "conversations", ...JSON.parse(JSON.stringify(subchannel._id)) };
+      // Convert string ID to the expected Id<"conversations"> type using the castId helper
+      const conversationId = castId<"conversations">(subchannel._id);
       
       await sendMessage({
         sessionToken: localStorage.getItem('sessionToken') || '',

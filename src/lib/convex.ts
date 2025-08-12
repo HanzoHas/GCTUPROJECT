@@ -1,13 +1,18 @@
 import { ConvexReactClient } from "convex/react";
 import { api as generatedApi } from "../../convex/_generated/api";
-import { FunctionReference } from "convex/server";
-import { Id } from "../../convex/_generated/dataModel";
+import { FunctionReference, SystemTableNames } from "convex/server";
+import { Id, TableNames } from "../../convex/_generated/dataModel";
 
 // Create a client for Convex
 export const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 
 // Use the generated API for full type safety
 export const api = generatedApi;
+
+// Helper function for ID casting
+export function castId<T extends TableNames | SystemTableNames>(id: string): Id<T> {
+  return id as unknown as Id<T>;
+}
 
 // Utility function to get session token from localStorage
 export const getSessionToken = (): string | null => {
