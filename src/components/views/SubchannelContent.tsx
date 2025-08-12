@@ -11,7 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Send, Image, Paperclip, Smile, Plus, Trash2, AudioLines, Video } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import GroupCallButton from '@/components/calls/GroupCallButton';
+import { useZego } from '@/contexts/ZegoContext';
+import { useMutation } from 'convex/react';
+import { api, convex } from '@/lib/convex';
 
 interface SubchannelContentProps {
   channel: ChannelType;
@@ -22,30 +26,62 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
   const { createChannelAnnouncement, channelAnnouncements, refreshAnnouncements, deleteChannelAnnouncement, canManageChannel } = useChannel();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isInCall } = useZego();
   const [messages, setMessages] = useState<any[]>([]); // This would be replaced with real messages from context
   const [messageText, setMessageText] = useState('');
   const [showNewAnnouncement, setShowNewAnnouncement] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sendMessage = useMutation(api.messages.sendMessage);
   
   useEffect(() => {
     // Scroll to bottom of messages
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, channelAnnouncements]);
   
+  // Function to fetch messages for the current subchannel
+  const fetchMessages = async () => {
+    try {
+      if (subchannel.type !== 'TEXT' && subchannel.type !== 'CLASS') return;
+      
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) return;
+      
+      // Use the Convex API to fetch messages for this subchannel
+      // Convert string ID to the expected Id<"conversations"> type
+      const conversationId = { __tableName: "conversations", ...JSON.parse(JSON.stringify(subchannel._id)) };
+      
+      // Use the Convex API to fetch messages for this subchannel
+      // We need to use convex.query instead of directly calling the function
+      const response = await convex.query(api.messages.getMessages, {
+        sessionToken,
+        conversationId
+      });
+      
+      if (response && Array.isArray(response)) {
+        // Messages are already filtered by conversationId on the server
+        setMessages(response);
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Set up real-time subscription for messages
   useEffect(() => {
-    // This would be replaced with real message fetching
     if (subchannel.type === 'TEXT' || subchannel.type === 'CLASS') {
-      // Mock data for demonstration
-      setMessages([
-        {
-          id: '1',
-          content: 'Welcome to the channel!',
-          sender: { id: 'admin', name: 'Admin', avatar: '' },
-          timestamp: Date.now() - 3600000
-        }
-      ]);
+      fetchMessages();
+      
+      // Set up polling for real-time updates (every 2 seconds)
+      const intervalId = setInterval(fetchMessages, 2000);
+      
+      return () => clearInterval(intervalId);
     }
     
     // Fetch announcements if it's an announcement channel
@@ -54,21 +90,42 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
     }
   }, [subchannel]);
   
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!messageText.trim()) return;
     
-    // This would send a real message in a complete implementation
-    const newMessage = {
-      id: `msg-${Date.now()}`,
-      content: messageText,
-      sender: { id: user?.id || 'unknown', name: user?.username || 'Unknown', avatar: user?.profilePicture },
-      timestamp: Date.now()
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
-    setMessageText('');
+    try {
+      // Send message using the Convex API
+      // Convert string ID to the expected Id<"conversations"> type
+      // This is a workaround for the type mismatch
+      const conversationId = { __tableName: "conversations", ...JSON.parse(JSON.stringify(subchannel._id)) };
+      
+      await sendMessage({
+        sessionToken: localStorage.getItem('sessionToken') || '',
+        conversationId, // Using subchannel ID as the conversation ID
+        content: messageText,
+        type: 'text'
+      });
+      
+      // Add message to local state for immediate feedback
+      const newMessage = {
+        id: `msg-${Date.now()}`,
+        content: messageText,
+        sender: { id: user?.id || 'unknown', name: user?.username || 'Unknown', avatar: user?.profilePicture },
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      setMessageText('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleCreateAnnouncement = async () => {
@@ -277,33 +334,71 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
   // For TEXT and CLASS channels (chat functionality)
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex justify-between items-center p-4 border-b">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <span>#{subchannel.name}</span>
+          {subchannel.description && (
+            <span className="text-sm font-normal text-muted-foreground">
+              {subchannel.description}
+            </span>
+          )}
+        </h2>
+        <div className="flex items-center gap-2">
+          {/* Only show call buttons if user is channel owner */}
+          {canManageChannel(channel._id) && (
+            <>
+              <GroupCallButton
+                channelId={channel._id}
+                subchannelId={subchannel._id}
+                channelName={subchannel.name}
+                variant="audio"
+                isChannelOwner={canManageChannel(channel._id)}
+              />
+              <GroupCallButton
+                channelId={channel._id}
+                subchannelId={subchannel._id}
+                channelName={subchannel.name}
+                variant="video"
+                isChannelOwner={canManageChannel(channel._id)}
+              />
+            </>
+          )}
+        </div>
+      </div>
+      
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div 
-            key={message.id}
-            className={`flex ${message.sender.id === user?.id ? 'justify-end' : 'justify-start'}`}
-          >
-            <div className="flex max-w-[80%]">
-              {message.sender.id !== user?.id && (
-                <Avatar className="h-8 w-8 mr-2 mt-1">
-                  <AvatarImage src={message.sender.avatar} />
-                  <AvatarFallback>{message.sender.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-              )}
-              <div>
+        <AnimatePresence>
+          {messages.map((message) => (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className={`flex ${message.sender.id === user?.id ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className="flex max-w-[80%]">
                 {message.sender.id !== user?.id && (
-                  <p className="text-xs text-muted-foreground mb-1">{message.sender.name}</p>
+                  <Avatar className="h-8 w-8 mr-2 mt-1">
+                    <AvatarImage src={message.sender.avatar} />
+                    <AvatarFallback>{message.sender.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
                 )}
-                <div className={`rounded-lg px-3 py-2 ${message.sender.id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                  {message.content}
+                <div>
+                  {message.sender.id !== user?.id && (
+                    <p className="text-xs text-muted-foreground mb-1">{message.sender.name}</p>
+                  )}
+                  <div className={`rounded-lg px-3 py-2 ${message.sender.id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    {message.content}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatDistanceToNow(message.timestamp, { addSuffix: true })}
-                </p>
               </div>
-            </div>
-          </div>
-        ))}
+            </motion.div>
+          ))}
+        </AnimatePresence>
         <div ref={messagesEndRef} />
       </div>
       
@@ -315,18 +410,27 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               className="pr-12"
+              disabled={isInCall} // Disable input when in a call
             />
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
               <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
                 <Paperclip className="h-4 w-4" />
               </Button>
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                <Smile className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <Button type="submit" size="icon" disabled={!messageText.trim()}>
+          <Button 
+            type="submit" 
+            size="icon" 
+            disabled={!messageText.trim() || isInCall}
+            className="transition-all duration-200 hover:bg-primary/90"
+          >
             <Send className="h-4 w-4" />
           </Button>
         </form>
       </div>
     </div>
   );
-} 
+}
