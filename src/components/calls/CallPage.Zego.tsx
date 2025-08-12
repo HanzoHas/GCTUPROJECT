@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useZego } from '@/contexts/ZegoContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
+// Access ZegoUIKitPrebuilt from the global window object
+const ZegoUIKitPrebuilt = (window as any).ZegoUIKitPrebuilt;
 
 const CallPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();

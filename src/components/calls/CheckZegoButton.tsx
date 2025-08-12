@@ -1,7 +1,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useZego } from '@/contexts/ZegoContext';
-import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
+// Access ZegoUIKitPrebuilt from the global window object
+const ZegoUIKitPrebuilt = (window as any).ZegoUIKitPrebuilt;
 
 const CheckZegoButton = () => {
   const checkZegoSetup = () => {
@@ -61,4 +62,4 @@ const CheckZegoButton = () => {
   );
 };
 
-export default CheckZegoButton; 
+export default CheckZegoButton;

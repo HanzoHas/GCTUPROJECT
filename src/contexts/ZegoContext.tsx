@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
+// Access ZegoUIKitPrebuilt from the global window object
+const ZegoUIKitPrebuilt = (window as any).ZegoUIKitPrebuilt;
 import { useAuth } from './AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
