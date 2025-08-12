@@ -6,7 +6,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { ChatProvider } from "./contexts/ChatContext";
 import { AnnouncementProvider } from "./contexts/AnnouncementContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
-import { LiveKitProvider } from "./contexts/LiveKitContext";
+import { ZegoProvider } from "./contexts/ZegoContext";
 import { ChannelProvider } from "./contexts/ChannelContext";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes";
@@ -19,7 +19,7 @@ const App = () => (
         <ChatProvider>
           <AnnouncementProvider>
             <SettingsProvider>
-              <LiveKitProvider>
+              <ZegoProvider>
                 <ChannelProvider>
                 <TooltipProvider>
                   <FontLoader />
@@ -28,7 +28,7 @@ const App = () => (
                   <Sonner />
                 </TooltipProvider>
                 </ChannelProvider>
-              </LiveKitProvider>
+              </ZegoProvider>
             </SettingsProvider>
           </AnnouncementProvider>
         </ChatProvider>

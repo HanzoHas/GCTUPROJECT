@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Room } from 'livekit-client';
+import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
 import { useAuth } from './AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { notifications, conversations } from '@/lib/convex';
+import { notifications, conversations, api } from '@/lib/convex';
+import { useMutation } from 'convex/react';
 
 // Define types
 type CallVariant = 'audio' | 'video';
@@ -59,6 +60,41 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
+  const sendMessage = useMutation(api.messages.sendMessage);
+
+  // Function to create a call room (caller's perspective)
+  const createCallRoom = (roomId: string, callType: CallVariant) => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to create calls',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!appID || !serverSecret) {
+      toast({
+        title: 'Configuration Error',
+        description: 'Video call service not properly configured',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Clean up any existing call
+    if (isInCall) {
+      endCurrentCall();
+    }
+
+    // Set call state
+    setIsInCall(true);
+    setCurrentCallId(roomId);
+    
+    // Navigate to call page
+    navigate(`/call/${roomId}?type=${callType}&mode=create`);
+  };
+
   const initCall = async (recipientId: string, recipientName: string, variant: CallVariant) => {
     // Only log errors, not regular flow
     if (!user) {
@@ -90,38 +126,45 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      // First check if the recipientId is a conversation ID by checking its length
-      // Most conversation IDs are longer than typical user IDs
+      // The recipientId is always a user ID in this context
       let actualUserId = recipientId;
-      
-      if (recipientId.length > 24) {
-        // Try to fetch the conversation to get member info without logging
-        const conversationData = await conversations.getConversation({ 
-          sessionToken: localStorage.getItem('sessionToken') || '',
-          conversationId: recipientId 
-        });
-        
-        if (conversationData && Array.isArray(conversationData.members)) {
-          // Get the other user's ID (not the current user)
-          const otherMember = conversationData.members.find(member => member.id !== user.id);
-          if (otherMember) {
-            actualUserId = otherMember.id;
-          } else {
-            throw new Error("Could not find recipient user in conversation members");
-          }
-        } else {
-          toast({
-            title: 'Call Failed',
-            description: 'Could not determine call recipient from conversation',
-            variant: 'destructive',
-          });
-          return;
-        }
-      }
 
       // Generate a unique room ID based on user IDs (sorted to ensure same ID regardless of who initiates)
       const participants = [user.id, actualUserId].sort();
       const roomId = `call_${participants.join('_')}_${Date.now()}`;
+      
+      // Get or create a direct conversation with the recipient
+      let conversation;
+      try {
+        conversation = await conversations.createOrGetDirectConversation(actualUserId);
+      } catch (error) {
+        console.error('Failed to get or create conversation:', error);
+        toast({
+          title: 'Call Setup Failed',
+          description: 'Could not create conversation with recipient',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Send a message with the call link
+      if (conversation && conversation.conversationId) {
+        const callType = variant === 'video' ? 'Video' : 'Audio';
+        const callLink = `/call/${roomId}?type=${variant}`;
+        const messageContent = `${user.username} is inviting you to join a ${callType.toLowerCase()} call. [Join Call](${callLink})`;
+        
+        try {
+          await sendMessage({
+            sessionToken: localStorage.getItem('sessionToken') || '',
+            conversationId: conversation.conversationId,
+            content: messageContent,
+            type: 'text'
+          });
+        } catch (error) {
+          console.error('Failed to send call message:', error);
+          // Continue with the call even if message fails
+        }
+      }
       
       // Send notification to recipient
       try {
@@ -132,8 +175,8 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
           callerName: user.username,
         });
         
-        // Join the call
-        joinCall(roomId, variant);
+        // Create the call room
+        createCallRoom(roomId, variant);
         
       } catch (error) {
         console.error('Failed to send call notification:', error);
@@ -181,8 +224,8 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     setIsInCall(true);
     setCurrentCallId(roomId);
     
-    // Navigate to call page
-    navigate(`/call/${roomId}?type=${callType}`);
+    // Navigate to call page with mode=join to indicate this user is joining an existing call
+    navigate(`/call/${roomId}?type=${callType}&mode=join`);
   };
 
   const endCurrentCall = () => {
@@ -225,4 +268,4 @@ export const useZego = (): ZegoContextType => {
     throw new Error('useZego must be used within a ZegoProvider');
   }
   return context;
-}; 
+};

@@ -1,1 +1,1 @@
-export { default } from './CallPage.LiveKit';
+export { default } from './CallPage.Zego';

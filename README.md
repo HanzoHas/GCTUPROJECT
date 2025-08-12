@@ -49,70 +49,49 @@ Happy emailing! 🎉
 
 ---
 
-## LiveKit Video Call Setup
+## ZEGO Cloud Video Call Setup
 
-This project now uses **LiveKit** for real-time video/audio calls. Follow these steps to configure it locally or in production.
+This project uses **ZEGO Cloud** for real-time video/audio calls. Follow these steps to configure it locally or in production.
 
-### 1. Spin up a LiveKit Server
+### 1. Create a ZEGO Cloud Account
 
-The quickest way is Docker:
+Sign up at [ZEGO Cloud Console](https://console.zegocloud.com/) and create a new project to get your App ID and Server Secret.
 
 ```bash
-# Replace with your own key/secret values (they can be any random strings)
-export LK_API_KEY=mykey
-export LK_API_SECRET=mysecret
-
-docker run --pull=always -p 7880:7880 -p 7881:7881 \
-  -e LIVEKIT_KEYS="$LK_API_KEY:$LK_API_SECRET" \
-  -e LIVEKIT_PORT=7880 \
-  -e LIVEKIT_API_PORT=7880 \
-  livekit/livekit-server:latest --dev
+# After creating your ZEGO Cloud project, you'll get an App ID and Server Secret
+# These will be used in your environment variables
 ```
-
-This exposes the server at `http://localhost:7880` (WebSocket URL is `ws://localhost:7880`). You may also use LiveKit Cloud or any self-hosted instance.
 
 ### 2. Configure Environment Variables
 
 Front-end (`.env` at project root):
 
 ```env
-VITE_LIVEKIT_URL=http://localhost:7880
-```
-
-Backend (Convex) secrets **must** be stored via the CLI so they never ship to the browser:
-
-```bash
-npx convex env set LIVEKIT_API_KEY "$LK_API_KEY"
-npx convex env set LIVEKIT_API_SECRET "$LK_API_SECRET"
-```
-
-Verify:
-
-```bash
-npx convex env ls
+VITE_ZEGO_APP_ID=your_app_id_here
+VITE_ZEGO_SERVER_SECRET=your_server_secret_here
 ```
 
 ### 3. Install & Run
 
 ```bash
-npm install          # grab LiveKit packages, etc.
+npm install          # install ZEGO Cloud SDK and other dependencies
 npm run dev:all      # runs Vite + Convex dev servers concurrently
 ```
 
-Open the app, start a chat, and hit the call button – you should join a fully in-app LiveKit room with custom UI.
+Open the app, start a chat, and hit the call button – you should join a fully in-app ZEGO Cloud call with custom UI.
 
 ### 4. Production Notes
 
-* Make sure your LiveKit server is reachable over WSS (TLS) on ports 443/80.
-* Store `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` in your production Convex project (`npx convex env set ...`).
-* Update `VITE_LIVEKIT_URL` in your hosting provider’s env settings.
+* Make sure your environment variables are properly set in your production environment.
+* Store `VITE_ZEGO_APP_ID` and `VITE_ZEGO_SERVER_SECRET` in your hosting provider's env settings.
+* For production, consider using a token server instead of client-side token generation for better security.
 
 ### 5. Troubleshooting
 
 | Issue                              | Fix |
 | ---------------------------------- | ------------------------------------------------------------- |
-| "WebSocket closed unexpected"      | Check server URL & ensure ports 7880/443 reachable            |
-| 401 / invalid token                | Verify API key/secret match the pair set in the server env    |
+| "Failed to connect to ZEGO"        | Check App ID and Server Secret are correctly set              |
+| Call initialization fails          | Verify environment variables are accessible to the app        |
 | No audio/video permissions         | Browser prompt must be accepted; local dev uses `localhost`   |
 
-Enjoy seamless **WhatsApp-style** calls with LiveKit! 🎥📞
+Enjoy seamless **WhatsApp-style** calls with ZEGO Cloud! 🎥📞

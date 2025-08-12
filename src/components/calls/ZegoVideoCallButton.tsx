@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Video, Phone } from 'lucide-react';
-import { useLiveKit } from '@/contexts/LiveKitContext';
+import { useZego } from '@/contexts/ZegoContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -12,13 +12,13 @@ interface VideoCallButtonProps {
   size?: 'default' | 'sm' | 'lg';
 }
 
-const VideoCallButton: React.FC<VideoCallButtonProps> = ({
+const ZegoVideoCallButton: React.FC<VideoCallButtonProps> = ({
   recipientId,
   recipientName,
   variant,
   size = 'default'
 }) => {
-  const { initCall } = useLiveKit();
+  const { initCall } = useZego();
   
   const handleClick = () => {
     if (!recipientId || recipientId.trim() === '') {
@@ -73,4 +73,4 @@ const VideoCallButton: React.FC<VideoCallButtonProps> = ({
   );
 };
 
-export default VideoCallButton; 
+export default ZegoVideoCallButton;
