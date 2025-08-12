@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useMutation } from 'convex/react';
-import { api, castId } from '@/lib/convex';
+import { api, getConversationIdFromSubchannel } from '@/lib/convex';
 
 interface GroupCallButtonProps {
   channelId: string;
@@ -60,8 +60,8 @@ const GroupCallButton: React.FC<GroupCallButtonProps> = ({
       const messageContent = `${user.username} started a ${callType.toLowerCase()} call. [Join Call](${callLink})`;
       
       // Send the message to the channel
-      // Convert string ID to the expected Id<"conversations"> type using the castId helper
-      const conversationId = castId<"conversations">(subchannelId);
+      // Convert subchannel ID to the expected Id<"conversations"> type using the helper function
+      const conversationId = getConversationIdFromSubchannel(subchannelId);
       
       await sendMessage({
         sessionToken: localStorage.getItem('sessionToken') || '',

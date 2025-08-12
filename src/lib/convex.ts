@@ -14,6 +14,14 @@ export function castId<T extends TableNames | SystemTableNames>(id: string): Id<
   return id as unknown as Id<T>;
 }
 
+// Helper function to get conversation ID from subchannel ID
+export function getConversationIdFromSubchannel(subchannelId: string): Id<"conversations"> {
+  // This function should query the database to get the corresponding conversation ID
+  // For now, we'll implement a temporary solution by creating a new ID with the correct table prefix
+  const conversationId = `conversations:${subchannelId.split(':')[1]}`;
+  return conversationId as unknown as Id<"conversations">;
+}
+
 // Utility function to get session token from localStorage
 export const getSessionToken = (): string | null => {
   return localStorage.getItem("sessionToken");
