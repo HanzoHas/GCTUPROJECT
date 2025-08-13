@@ -560,4 +560,4 @@ export default internalMutation(async ({ db }): Promise<void> => {
   await createPostsAndComments([...userIds, demoAdminId]);
   
   console.log("Database seeding completed successfully!");
-}
+}});
