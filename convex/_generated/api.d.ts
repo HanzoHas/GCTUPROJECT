@@ -21,6 +21,7 @@ import type * as channels from "../channels.js";
 import type * as conversations from "../conversations.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
+import type * as scripts_seed from "../scripts/seed.js";
 import type * as settings from "../settings.js";
 import type * as subchannels from "../subchannels.js";
 import type * as trending from "../trending.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
   messages: typeof messages;
   notifications: typeof notifications;
+  "scripts/seed": typeof scripts_seed;
   settings: typeof settings;
   subchannels: typeof subchannels;
   trending: typeof trending;

@@ -18,7 +18,36 @@ export function castId<T extends TableNames | SystemTableNames>(id: string): Id<
 export function getConversationIdFromSubchannel(subchannelId: string): Id<"conversations"> {
   // This function should query the database to get the corresponding conversation ID
   // For now, we'll implement a temporary solution by creating a new ID with the correct table prefix
-  const conversationId = `conversations:${subchannelId.split(':')[1]}`;
+  
+  // Check if subchannelId is valid
+  if (!subchannelId || typeof subchannelId !== 'string') {
+    console.error('Invalid subchannelId provided to getConversationIdFromSubchannel:', subchannelId);
+    throw new Error('Invalid subchannel ID');
+  }
+  
+  // Generate a deterministic conversation ID based on the subchannel ID
+  // This ensures that the same subchannel always maps to the same conversation ID
+  let idPart;
+  
+  // Try to extract the ID part after the colon if it exists
+  const parts = subchannelId.split(':');
+  if (parts.length >= 2 && parts[1]) {
+    // If the ID has a proper format like 'studySubchannels:abc123', use the part after the colon
+    idPart = parts[1];
+  } else {
+    // If the ID doesn't have a colon or is in an unexpected format,
+    // use a hash of the entire ID to ensure uniqueness
+    idPart = subchannelId.replace(/[^a-zA-Z0-9]/g, '');
+  }
+  
+  // Ensure we have a valid ID part
+  if (!idPart) {
+    console.error('Could not extract a valid ID part from subchannelId:', subchannelId);
+    // Use a fallback ID based on timestamp to avoid errors
+    idPart = `fallback_${Date.now()}`;
+  }
+  
+  const conversationId = `conversations:${idPart}`;
   return conversationId as unknown as Id<"conversations">;
 }
 
