@@ -20,6 +20,7 @@ import type * as channelAnnouncements from "../channelAnnouncements.js";
 import type * as channels from "../channels.js";
 import type * as conversations from "../conversations.js";
 import type * as messages from "../messages.js";
+import type * as notifications_sendCallInvite from "../notifications/sendCallInvite.js";
 import type * as notifications from "../notifications.js";
 import type * as scripts_seed from "../scripts/seed.js";
 import type * as settings from "../settings.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   channels: typeof channels;
   conversations: typeof conversations;
   messages: typeof messages;
+  "notifications/sendCallInvite": typeof notifications_sendCallInvite;
   notifications: typeof notifications;
   "scripts/seed": typeof scripts_seed;
   settings: typeof settings;

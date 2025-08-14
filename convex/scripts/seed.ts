@@ -2,10 +2,11 @@ import { internalMutation } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 
 // For password hashing
-const bcrypt = require("bcryptjs");
+import * as bcrypt from "bcryptjs";
 
 // Seed function to populate the database
-export default internalMutation(async ({ db }): Promise<void> => {
+export default internalMutation(async (ctx: any): Promise<void> => {
+  const { db } = ctx;
   console.log("Starting database seeding...");
 
   // Define helper functions inside the mutation scope
@@ -235,7 +236,7 @@ export default internalMutation(async ({ db }): Promise<void> => {
       // Get members of this channel
       const members = await db
         .query("channelMembers")
-        .withIndex("by_channel", (q) => q.eq("channelId", subchannel.channelId))
+        .withIndex("by_channel", (q: any) => q.eq("channelId", subchannel.channelId))
         .collect();
       
       const memberUserIds = members.map((member: any) => member.userId);

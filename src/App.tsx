@@ -8,6 +8,7 @@ import { AnnouncementProvider } from "./contexts/AnnouncementContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { ZegoProvider } from "./contexts/ZegoContext";
 import { ChannelProvider } from "./contexts/ChannelContext";
+import { CallNotificationProvider } from "./contexts/CallNotificationContext";
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes";
 import { FontLoader } from "@/components/FontLoader";
@@ -21,12 +22,14 @@ const App = () => (
             <SettingsProvider>
               <ZegoProvider>
                 <ChannelProvider>
-                <TooltipProvider>
-                  <FontLoader />
-                  <AppRoutes />
-                  <Toaster />
-                  <Sonner />
-                </TooltipProvider>
+                  <CallNotificationProvider>
+                    <TooltipProvider>
+                      <FontLoader />
+                      <AppRoutes />
+                      <Toaster />
+                      <Sonner />
+                    </TooltipProvider>
+                  </CallNotificationProvider>
                 </ChannelProvider>
               </ZegoProvider>
             </SettingsProvider>

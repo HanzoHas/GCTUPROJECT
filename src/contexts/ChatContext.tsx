@@ -4,8 +4,8 @@ import { messages as messagesApi, conversations as conversationsApi } from '../l
 import { useToast } from '@/components/ui/use-toast';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { getSessionToken, clearSessionToken } from '../lib/convex';
 import { Id } from '../../convex/_generated/dataModel';
+import { getSessionToken, clearSessionToken } from '../lib/convex';
 
 export type MessageType = 'text' | 'image' | 'video' | 'audio';
 
@@ -34,7 +34,7 @@ export interface Message {
 }
 
 export interface Conversation {
-  id: string;
+  id: Id<"conversations">;
   name: string;
   avatar?: string;
   wallpaper?: string;
@@ -243,6 +243,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const sessionToken = useMemo(() => getSessionToken() || "", []);
   
   // Fetch conversations using useQuery
+  // Fetch conversations using useQuery
   const conversationsData = useQuery(
     api.conversations.getUserConversations,
     isAuthenticated && sessionToken ? { sessionToken } : "skip"
@@ -281,10 +282,35 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         : [];
       
       setConversations(mappedConversations);
-    } else {
-      setConversations([]);
     }
   }, [isAuthenticated, conversationsData]);
+  
+  // Live subscription for messages in the current conversation
+  const liveMessages = useQuery(
+    api.messages.getMessages,
+    currentConversation && sessionToken && isAuthenticated ? { 
+      sessionToken, 
+      conversationId: currentConversation.id, 
+      limit: 50 
+    } : "skip"
+  );
+
+  useEffect(() => {
+    if (currentConversation && liveMessages) {
+      setMessages(liveMessages);
+      if (liveMessages.length > 0) {
+        const oldest = liveMessages.reduce((prev, curr) =>
+          prev.timestamp < curr.timestamp ? prev : curr
+        );
+        setOldestMessageTimestamp(oldest.timestamp);
+      } else {
+        setOldestMessageTimestamp(null);
+      }
+    } else {
+      setMessages([]);
+      setOldestMessageTimestamp(null);
+    }
+  }, [currentConversation, liveMessages]);
   
   // Stop typing indicator - Define this first to avoid circular dependency
   const stopTyping = useCallback(() => {
@@ -393,15 +419,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [currentConversation, toast, sessionToken]);
   
-  // Load messages when conversation changes
-  useEffect(() => {
-    if (currentConversation) {
-      fetchMessages();
-    } else {
-      setMessages([]);
-      setOldestMessageTimestamp(null);
-    }
-  }, [currentConversation, fetchMessages]);
+
 
   // Set current conversation
   const handleSetCurrentConversation = useCallback((conversation: Conversation | null) => {

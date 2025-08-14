@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Phone, Video } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,18 +12,24 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { notifications as notificationsApi } from '@/lib/convex';
 import { useAuth } from '@/contexts/AuthContext';
+import { useZego } from '@/contexts/ZegoContext';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 export interface Notification {
   id: string;
-  type: 'message' | 'mention' | 'groupInvite' | 'announcement' | 'groupJoinRequest' | 'groupJoinApproved';
+  type: 'message' | 'mention' | 'groupInvite' | 'announcement' | 'groupJoinRequest' | 'groupJoinApproved' | 'call';
   title: string;
   content: string;
   timestamp: number;
   read: boolean;
   sourceId?: string;
-  sourceType?: 'conversation' | 'message' | 'announcement' | 'joinRequest';
+  sourceType?: 'conversation' | 'message' | 'announcement' | 'joinRequest' | 'call';
+  callData?: {
+    callType: 'audio' | 'video';
+    roomId: string;
+    callerName: string;
+  };
 }
 
 const NotificationDropdown = () => {
@@ -138,6 +144,8 @@ const NotificationDropdown = () => {
         return '🔔';
       case 'groupJoinApproved':
         return '✅';
+      case 'call':
+        return '📞';
       default:
         return '📌';
     }

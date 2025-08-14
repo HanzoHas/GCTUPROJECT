@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Video, Phone } from 'lucide-react';
 import { useZego } from '@/contexts/ZegoContext';
@@ -7,7 +7,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useMutation } from 'convex/react';
-import { api, getConversationIdFromSubchannel } from '@/lib/convex';
+import { api } from '@/lib/convex';
+
+// Memoized button icons to prevent unnecessary re-renders
+const CallIcons = {
+  video: <Video className="h-4 w-4" />,
+  audio: <Phone className="h-4 w-4" />
+};
 
 interface GroupCallButtonProps {
   channelId: string;
@@ -31,7 +37,8 @@ const GroupCallButton: React.FC<GroupCallButtonProps> = ({
   const { initCall } = useZego();
   const sendMessage = useMutation(api.messages.sendMessage);
   
-  const handleClick = async () => {
+  // Memoized click handler with proper error handling
+  const handleClick = useCallback(async () => {
     if (!isChannelOwner) {
       toast({
         title: "Permission Denied",
@@ -50,28 +57,27 @@ const GroupCallButton: React.FC<GroupCallButtonProps> = ({
       return;
     }
     
+    // Generate a unique room ID for the channel call
+    // Use a consistent format that both clients can generate
+    const roomId = `channel_${channelId}_${subchannelId}`;
+    const callType = variant === 'video' ? 'Video' : 'Audio';
+    
     try {
-      // Generate a unique room ID for the channel call
-      const roomId = `channel_${channelId}_${subchannelId}_${Date.now()}`;
+      // Initialize the call first to ensure we have a valid room ID
+      initCall(roomId, channelName, variant);
       
       // Create a message with the call link
-      const callType = variant === 'video' ? 'Video' : 'Audio';
-      const callLink = `/call/${roomId}?type=${variant}`;
+      const callLink = `/call/${roomId}?type=${variant}&channelId=${channelId}&subchannelId=${subchannelId}`;
       const messageContent = `${user.username} started a ${callType.toLowerCase()} call. [Join Call](${callLink})`;
       
       // Send the message to the channel
-      // Convert subchannel ID to the expected Id<"conversations"> type using the helper function
-      const conversationId = getConversationIdFromSubchannel(subchannelId);
-      
+      // Use the subchannel ID directly as the conversation ID
       await sendMessage({
         sessionToken: localStorage.getItem('sessionToken') || '',
-        conversationId, // Using subchannel ID as the conversation ID
+        conversationId: subchannelId, // Use subchannel ID directly
         content: messageContent,
         type: 'text'
       });
-      
-      // Initialize the call
-      initCall(channelId, channelName, variant);
       
       toast({
         title: "Call Started",
@@ -79,25 +85,31 @@ const GroupCallButton: React.FC<GroupCallButtonProps> = ({
       });
     } catch (error) {
       console.error('Error starting group call:', error);
+      // End the call if it was partially started
+      if (window.zegoInstance) {
+        window.zegoInstance.destroy();
+      }
+      
       toast({
         title: "Call Error",
-        description: "There was a problem starting the call",
+        description: error instanceof Error ? error.message : "There was a problem starting the call",
         variant: "destructive"
       });
     }
-  };
+  }, [channelId, channelName, initCall, isChannelOwner, sendMessage, subchannelId, toast, user, variant]);
   
-  const sizeClasses = {
+  // Memoize size classes to prevent unnecessary re-renders
+  const sizeClasses = useMemo(() => ({
     default: 'h-8 w-8',
     sm: 'h-6 w-6',
     lg: 'h-10 w-10'
-  };
+  }), []);
   
-  const iconSize = {
+  const iconSize = useMemo(() => ({
     default: 'h-4 w-4',
     sm: 'h-3 w-3',
     lg: 'h-5 w-5'
-  };
+  }), []);
   
   const tooltipText = variant === 'video' ? 'Start Video Call' : 'Start Audio Call';
   const Icon = variant === 'video' ? Video : Phone;

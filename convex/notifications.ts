@@ -40,6 +40,7 @@ export const getNotifications = query({
       read: notification.read,
       sourceId: notification.sourceId,
       sourceType: notification.sourceType,
+      callData: notification.callData, // Include callData in the response
     }));
   },
 });

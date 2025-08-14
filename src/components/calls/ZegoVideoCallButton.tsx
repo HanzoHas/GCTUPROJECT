@@ -10,13 +10,15 @@ interface VideoCallButtonProps {
   recipientName: string;
   variant: 'video' | 'audio';
   size?: 'default' | 'sm' | 'lg';
+  conversationId?: string;
 }
 
 const ZegoVideoCallButton: React.FC<VideoCallButtonProps> = ({
   recipientId,
   recipientName,
   variant,
-  size = 'default'
+  size = 'default',
+  conversationId
 }) => {
   const { initCall } = useZego();
   
@@ -33,7 +35,7 @@ const ZegoVideoCallButton: React.FC<VideoCallButtonProps> = ({
       return;
     }
     
-    initCall(recipientId, recipientName, variant);
+    initCall(recipientId, recipientName, variant, conversationId);
   };
   
   const sizeClasses = {

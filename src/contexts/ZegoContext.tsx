@@ -4,14 +4,13 @@ const ZegoUIKitPrebuilt = (window as any).ZegoUIKitPrebuilt;
 import { useAuth } from './AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { notifications, conversations, api } from '@/lib/convex';
-import { useMutation } from 'convex/react';
+import { notifications, api } from '@/lib/convex';
 
 // Define types
 type CallVariant = 'audio' | 'video';
 
 interface ZegoContextType {
-  initCall: (recipientId: string, recipientName: string, variant: CallVariant) => void;
+  initCall: (recipientId: string, recipientName: string, variant: CallVariant, conversationId?: string) => void;
   joinCall: (roomId: string, callType: CallVariant) => void;
   endCurrentCall: () => void;
   isInCall: boolean;
@@ -61,7 +60,7 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const sendMessage = useMutation(api.messages.sendMessage);
+
 
   // Function to create a call room (caller's perspective)
   const createCallRoom = (roomId: string, callType: CallVariant) => {
@@ -96,7 +95,7 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     navigate(`/call/${roomId}?type=${callType}&mode=create`);
   };
 
-  const initCall = async (recipientId: string, recipientName: string, variant: CallVariant) => {
+  const initCall = async (recipientId: string, recipientName: string, variant: CallVariant, conversationId?: string) => {
     // Only log errors, not regular flow
     if (!user) {
       toast({
@@ -130,44 +129,10 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
       // The recipientId is always a user ID in this context
       let actualUserId = recipientId;
 
-      // Generate a unique room ID based on user IDs (sorted to ensure same ID regardless of who initiates)
-      const participants = [user.id, actualUserId].sort();
-      const roomId = `call_${participants.join('_')}_${Date.now()}`;
+      // Use the provided conversationId if available, otherwise generate a consistent room ID
+      const roomId = conversationId || `call_${[user.id, actualUserId].sort().join('_')}`;
       
-      // Get or create a direct conversation with the recipient
-      let conversation;
-      try {
-        conversation = await conversations.createOrGetDirectConversation(actualUserId);
-      } catch (error) {
-        console.error('Failed to get or create conversation:', error);
-        toast({
-          title: 'Call Setup Failed',
-          description: 'Could not create conversation with recipient',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      // Send a message with the call link
-      if (conversation && conversation.conversationId) {
-        const callType = variant === 'video' ? 'Video' : 'Audio';
-        const callLink = `/call/${roomId}?type=${variant}`;
-        const messageContent = `${user.username} is inviting you to join a ${callType.toLowerCase()} call. [Join Call](${callLink})`;
-        
-        try {
-          await sendMessage({
-            sessionToken: localStorage.getItem('sessionToken') || '',
-            conversationId: conversation.conversationId,
-            content: messageContent,
-            type: 'text'
-          });
-        } catch (error) {
-          console.error('Failed to send call message:', error);
-          // Continue with the call even if message fails
-        }
-      }
-      
-      // Send notification to recipient
+      // Send notification to recipient (this will show the popup)
       try {
         await notifications.sendCallNotification({
           targetUserId: actualUserId,
@@ -178,6 +143,12 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
         
         // Create the call room
         createCallRoom(roomId, variant);
+        
+        toast({
+          title: 'Call Started',
+          description: `${recipientName} has been notified of your ${variant} call`,
+          variant: 'default',
+        });
         
       } catch (error) {
         console.error('Failed to send call notification:', error);
