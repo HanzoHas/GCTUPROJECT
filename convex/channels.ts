@@ -487,13 +487,28 @@ export const getChannelsByLevel = query({
     await getAuthenticatedUser(ctx, args.sessionToken);
     const { level } = args;
 
-    // Get all channels
-    const allChannels = await ctx.db.query("studyChannels").collect();
+    // Get only visible channels that user is a member of
+    const { userId } = await getAuthenticatedUser(ctx, args.sessionToken);
+    
+    // Get user's channel memberships
+    const memberships = await ctx.db
+      .query("channelMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    
+    const memberChannelIds = memberships.map(m => m.channelId);
+    
+    // Get channels user is a member of
+    const memberChannels = await Promise.all(
+      memberChannelIds.map(id => ctx.db.get(id))
+    );
+    
+    const validChannels = memberChannels.filter((channel): channel is NonNullable<typeof channel> => channel !== null);
     
     // Filter by level if provided
     const filteredChannels = level 
-      ? allChannels.filter(channel => channel.level === level)
-      : allChannels;
+      ? validChannels.filter(channel => channel.level === level)
+      : validChannels;
 
     // Add lecturer info
     const channelsWithDetails = await Promise.all(

@@ -287,41 +287,43 @@ function ChannelsView() {
           </div>
 
           {/* Channel List */}
-          <div className="space-y-2">
-            {filteredChannels.length > 0 ? (
-              filteredChannels.map(channel => (
-                <div
-                  key={channel._id}
-                  className={`p-2 rounded cursor-pointer hover:bg-accent ${
-                    selectedChannel?._id === channel._id ? 'bg-accent' : ''
-                  }`}
-                  onClick={() => setSelectedChannel(channel)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{channel.name}</span>
-                    <div className="flex items-center space-x-1">
-                      {channel.level && (
-                        <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
-                          {channel.level}
-                        </span>
-                      )}
-                      {channel.isPrivate && (
-                        <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                      )}
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-2 pr-2">
+              {filteredChannels.length > 0 ? (
+                filteredChannels.map(channel => (
+                  <div
+                    key={channel._id}
+                    className={`p-2 rounded cursor-pointer hover:bg-accent ${
+                      selectedChannel?._id === channel._id ? 'bg-accent' : ''
+                    }`}
+                    onClick={() => setSelectedChannel(channel)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{channel.name}</span>
+                      <div className="flex items-center space-x-1">
+                        {channel.level && (
+                          <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                            {channel.level}
+                          </span>
+                        )}
+                        {channel.isPrivate && (
+                          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
+                    {channel.description && (
+                      <p className="text-sm text-muted-foreground truncate">
+                        {channel.description}
+                      </p>
+                    )}
                   </div>
-                  {channel.description && (
-                    <p className="text-sm text-muted-foreground truncate">
-                      {channel.description}
-                    </p>
-                  )}
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  {searchQuery || !levelFilter.all ? 'No channels found' : 'No channels available'}
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-4 text-muted-foreground">
-                {searchQuery || !levelFilter.all ? 'No channels found' : 'No channels available'}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { X, MessageSquare, Users, Bell, Plus } from 'lucide-react';
 import { CreateSubchannelDialog } from './CreateSubchannelDialog';
 import { SubchannelContent } from './SubchannelContent';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface ChannelContentProps {
   channel: ChannelType;
@@ -57,50 +58,56 @@ export function ChannelContent({ channel, onClose }: ChannelContentProps) {
       
       <div className="flex-1 flex">
         {/* Subchannels sidebar */}
-        <div className="w-64 border-r p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium">Subchannels</h3>
-            {canManageChannel(channel._id) && (
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={() => setIsCreatingSubchannel(true)}
-                className="h-8 w-8 p-0"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            )}
+        <div className="w-64 border-r flex flex-col">
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium">Subchannels</h3>
+              {canManageChannel(channel._id) && (
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => setIsCreatingSubchannel(true)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
           
-          {isLoadingSubchannels ? (
-            <div className="text-center py-4 text-muted-foreground">Loading...</div>
-          ) : subchannels.length > 0 ? (
-            <div className="space-y-1">
-              {subchannels.map(subchannel => (
-                <div 
-                  key={subchannel._id}
-                  className={`flex items-center p-2 rounded cursor-pointer hover:bg-accent ${currentSubchannel?._id === subchannel._id ? 'bg-accent' : ''}`}
-                  onClick={() => handleSubchannelClick(subchannel)}
-                >
-                  {getSubchannelIcon(subchannel.type)}
-                  <span>{subchannel.name}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-muted-foreground">
-              No subchannels available
-            </div>
-          )}
+          <div className="flex-1 overflow-y-auto p-4">
+            {isLoadingSubchannels ? (
+              <div className="text-center py-4 text-muted-foreground">Loading...</div>
+            ) : subchannels.length > 0 ? (
+              <div className="space-y-1 pr-2">
+                {subchannels.map(subchannel => (
+                  <div 
+                    key={subchannel._id}
+                    className={`flex items-center p-2 rounded cursor-pointer hover:bg-accent ${currentSubchannel?._id === subchannel._id ? 'bg-accent' : ''}`}
+                    onClick={() => handleSubchannelClick(subchannel)}
+                  >
+                    {getSubchannelIcon(subchannel.type)}
+                    <span>{subchannel.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                No subchannels available
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Main content area */}
         <div className="flex-1 overflow-auto">
           {currentSubchannel ? (
-            <SubchannelContent 
-              channel={channel} 
-              subchannel={currentSubchannel} 
-            />
+            <ErrorBoundary>
+              <SubchannelContent 
+                channel={channel} 
+                subchannel={currentSubchannel} 
+              />
+            </ErrorBoundary>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <h3 className="text-lg font-medium mb-2">Welcome to {channel.name}</h3>

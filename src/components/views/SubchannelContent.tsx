@@ -16,7 +16,7 @@ import GroupCallButton from '@/components/calls/GroupCallButton';
 import { useZego } from '@/contexts/ZegoContext';
 import { useMutation, useQuery } from 'convex/react';
 import { api, convex } from '@/lib/convex';
-import type { Id } from '@/convex/_generated/dataModel';
+import type { Id } from '../../../convex/_generated/dataModel';
 
 interface SubchannelContentProps {
   channel: ChannelType;
@@ -36,7 +36,7 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendMessage = useMutation(api.messages.sendMessage);
 
-  // Get conversation ID for this subchannel
+  // Get conversation ID for this subchannel with error handling
   const conversationQuery = useQuery(api.conversations.getConversationBySubchannel, 
     conversationId === null ? {
       sessionToken: localStorage.getItem('sessionToken') || '',
@@ -79,7 +79,7 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
       
       if (response && Array.isArray(response)) {
         // Messages are already filtered by conversationId on the server
-        setMessages(response);
+        // Using real-time subscription now, no need to set local state
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -93,14 +93,14 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
   
   // Set up real-time subscription for messages
   useEffect(() => {
-    if (subchannel.type === 'TEXT' || subchannel.type === 'CLASS') {
-      fetchMessages();
-      
-      // Set up polling for real-time updates (every 2 seconds)
-      const intervalId = setInterval(fetchMessages, 2000);
-      
-      return () => clearInterval(intervalId);
+    if (conversationQuery && conversationQuery.conversationId && !conversationId) {
+      setConversationId(conversationQuery.conversationId);
     }
+  }, [conversationQuery, conversationId]);
+
+  useEffect(() => {
+    // Reset conversation ID when subchannel changes
+    setConversationId(null);
     
     // Fetch announcements if it's an announcement channel
     if (subchannel.type === 'ANNOUNCEMENT') {
@@ -379,20 +379,20 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className={`flex ${message.sender.id === user?.id ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
             >
               <div className="flex max-w-[80%]">
-                {message.sender.id !== user?.id && (
+                {message.senderId !== user?.id && (
                   <Avatar className="h-8 w-8 mr-2 mt-1">
-                    <AvatarImage src={message.sender.avatar} />
-                    <AvatarFallback>{message.sender.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={message.senderPicture} />
+                    <AvatarFallback>{message.senderName?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
                   </Avatar>
                 )}
                 <div>
-                  {message.sender.id !== user?.id && (
-                    <p className="text-xs text-muted-foreground mb-1">{message.sender.name}</p>
+                  {message.senderId !== user?.id && (
+                    <p className="text-xs text-muted-foreground mb-1">{message.senderName}</p>
                   )}
-                  <div className={`rounded-lg px-3 py-2 ${message.sender.id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                  <div className={`rounded-lg px-3 py-2 ${message.senderId === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                     {message.content}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">

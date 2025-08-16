@@ -24,69 +24,19 @@ const CallPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
-  const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-
-  // Memoized requestPermissions function
-  const requestPermissions = useCallback(async () => {
-    if (isRequestingPermissions) return false;
-    
-    setIsRequestingPermissions(true);
-    try {
-      const constraints = {
-        audio: true,
-        video: callType === 'video'
-      };
-      
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      // Stop the stream immediately as we just needed to get permissions
-      stream.getTracks().forEach(track => {
-        track.stop();
-        stream.removeTrack(track);
-      });
-      
-      setPermissionsGranted(true);
-      toast({
-        title: 'Permissions Granted',
-        description: 'Camera and microphone access granted',
-        variant: 'default',
-      });
-      return true;
-    } catch (error) {
-      console.error('Permission denied:', error);
-      toast({
-        title: 'Permission Required',
-        description: 'Please allow camera and microphone access to join the call',
-        variant: 'destructive',
-      });
-      setPermissionsGranted(false);
-      return false;
-    } finally {
-      setIsRequestingPermissions(false);
-    }
-  }, [callType, isRequestingPermissions, toast]);
+  const permissionsGranted = true; // Auto-grant permissions
 
   // Check if user is on mobile
   useEffect(() => {
     const mobileCheck = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     setIsMobile(mobileCheck);
+  }, []);
 
-    // Auto-request permissions on desktop
-    if (!mobileCheck && user && roomId) {
-      requestPermissions();
-    }
-  }, [user, roomId]);
-
-  // Initialize call only after permissions are granted
+  // Initialize call
   useEffect(() => {
     if (!user || !roomId) {
       navigate('/');
-      return;
-    }
-
-    // Only initialize call if permissions are granted
-    if (!permissionsGranted) {
       return;
     }
 
@@ -190,58 +140,7 @@ const CallPage: React.FC = () => {
     };
   }, [endCurrentCall]);
 
-  // Render permission request UI for mobile
-  if (isMobile && !permissionsGranted) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold mb-4">Permission Required</h1>
-          <p className="mb-6 text-gray-600">
-            To join the {callType} call, please grant camera and microphone permissions.
-          </p>
-          <button
-            onClick={requestPermissions}
-            disabled={isRequestingPermissions}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isRequestingPermissions ? 'Requesting...' : 'Allow Camera & Microphone'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Show permission request screen
-  if (!permissionsGranted) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-background">
-        <div className="text-center space-y-4 max-w-md mx-auto p-6">
-          <div className="text-6xl mb-4">
-            {callType === 'video' ? '📹' : '🎤'}
-          </div>
-          <h2 className="text-2xl font-semibold">
-            {callType === 'video' ? 'Camera' : 'Microphone'} Access Required
-          </h2>
-          <p className="text-muted-foreground">
-            To join this {callType} call, please allow access to your {callType === 'video' ? 'camera and microphone' : 'microphone'}.
-          </p>
-          <button
-            onClick={requestPermissions}
-            disabled={isRequestingPermissions}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-3 rounded-lg font-medium disabled:opacity-50"
-          >
-            {isRequestingPermissions ? 'Requesting...' : 'Grant Permissions'}
-          </button>
-          <button
-            onClick={() => navigate('/')}
-            className="block w-full text-muted-foreground hover:text-foreground mt-4"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Permissions are auto-granted, no need for permission screens
 
   return (
     <div className="h-screen w-full flex flex-col bg-black">

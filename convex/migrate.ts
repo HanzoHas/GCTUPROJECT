@@ -1,5 +1,6 @@
-import { internalMutation } from "./_generated/server";
+import { internalMutation, action } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 // Migration function to create conversations for existing subchannels
 export const createConversationsForSubchannels = internalMutation({

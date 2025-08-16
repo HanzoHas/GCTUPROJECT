@@ -63,7 +63,7 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
 
 
   // Function to create a call room (caller's perspective)
-  const createCallRoom = (roomId: string, callType: CallVariant) => {
+  const createCallRoom = async (roomId: string, callType: CallVariant) => {
     if (!user) {
       toast({
         title: 'Error',
@@ -82,17 +82,36 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Clean up any existing call
-    if (isInCall) {
-      endCurrentCall();
-    }
+    try {
+      // Clean up any existing call
+      if (isInCall) {
+        endCurrentCall();
+      }
 
-    // Set call state
-    setIsInCall(true);
-    setCurrentCallId(roomId);
-    
-    // Navigate to call page
-    navigate(`/call/${roomId}?type=${callType}`);
+      // Set call state before navigation
+      setIsInCall(true);
+      setCurrentCallId(roomId);
+      
+      // Generate token before navigation to ensure it's ready
+      const token = generateToken(roomId, user.id, user.username);
+      if (!token) {
+        throw new Error('Failed to generate call token');
+      }
+      
+      // Open in new tab to prevent navigation issues
+      const callUrl = `/call/${roomId}?type=${callType}`;
+      window.open(callUrl, '_blank', 'noopener,noreferrer');
+      
+    } catch (error) {
+      console.error('Error creating call room:', error);
+      setIsInCall(false);
+      setCurrentCallId(null);
+      toast({
+        title: 'Error',
+        description: 'Failed to create the call. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const initCall = async (recipientId: string, recipientName: string, variant: CallVariant, conversationId?: string) => {
@@ -178,7 +197,7 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const joinCall = (roomId: string, callType: CallVariant) => {
+  const joinCall = async (roomId: string, callType: CallVariant) => {
     if (!user) {
       toast({
         title: 'Error',
@@ -197,17 +216,36 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Clean up any existing call
-    if (isInCall) {
-      endCurrentCall();
-    }
+    try {
+      // Clean up any existing call
+      if (isInCall) {
+        endCurrentCall();
+      }
 
-    // Set call state
-    setIsInCall(true);
-    setCurrentCallId(roomId);
-    
-    // Navigate to call page - both users join the same room
-    navigate(`/call/${roomId}?type=${callType}`);
+      // Set call state before navigation
+      setIsInCall(true);
+      setCurrentCallId(roomId);
+      
+      // Generate token before navigation to ensure it's ready
+      const token = generateToken(roomId, user.id, user.username);
+      if (!token) {
+        throw new Error('Failed to generate call token');
+      }
+      
+      // Open in new tab to prevent navigation issues
+      const callUrl = `/call/${roomId}?type=${callType}`;
+      window.open(callUrl, '_blank', 'noopener,noreferrer');
+      
+    } catch (error) {
+      console.error('Error joining call:', error);
+      setIsInCall(false);
+      setCurrentCallId(null);
+      toast({
+        title: 'Error',
+        description: 'Failed to join the call. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const endCurrentCall = () => {

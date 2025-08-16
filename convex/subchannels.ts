@@ -53,10 +53,22 @@ export const getChannelSubchannels = query({
     channelId: v.id("studyChannels"),
   },
   handler: async (ctx, args) => {
-    await getAuthenticatedUser(ctx, args.sessionToken);
+    const { userId } = await getAuthenticatedUser(ctx, args.sessionToken);
     const { channelId } = args;
 
-    // Get all subchannels for the channel
+    // Get all subchannels for the channel if user is a member
+    const membership = await ctx.db
+      .query("channelMembers")
+      .withIndex("by_channel_user", (q) => 
+        q.eq("channelId", channelId).eq("userId", userId)
+      )
+      .first();
+
+    if (!membership) {
+      return []; // User not a member of the channel, return empty
+    }
+
+    // Return all subchannels for joined channels
     const subchannels = await ctx.db
       .query("studySubchannels")
       .withIndex("by_channel", (q) => q.eq("channelId", channelId))
@@ -190,6 +202,68 @@ export const deleteSubchannel = mutation({
     await ctx.db.delete(subchannelId);
 
     return { success: true };
+  },
+});
+
+// Search for channels by name (for finding hidden channels to join)
+export const searchChannels = query({
+  args: {
+    sessionToken: sessionTokenValidator,
+    searchQuery: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await getAuthenticatedUser(ctx, args.sessionToken);
+    const { searchQuery } = args;
+
+    // Get all channels (including hidden ones for search)
+    const channels = await ctx.db
+      .query("studyChannels")
+      .collect();
+
+    // Filter by search query
+    return channels.filter(channel => 
+      channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (channel.description && channel.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  },
+});
+
+// Join a channel (make it and its subchannels accessible)
+export const joinChannel = mutation({
+  args: {
+    sessionToken: sessionTokenValidator,
+    channelId: v.id("studyChannels"),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await getAuthenticatedUser(ctx, args.sessionToken);
+    const { channelId } = args;
+
+    // Get the channel
+    const channel = await ctx.db.get(channelId);
+    if (!channel) {
+      throw new ConvexError("Channel not found");
+    }
+
+    // Check if user is already a member of this channel
+    const existingMembership = await ctx.db
+      .query("channelMembers")
+      .withIndex("by_channel_user", (q) => 
+        q.eq("channelId", channelId).eq("userId", userId)
+      )
+      .first();
+
+    if (existingMembership) {
+      throw new ConvexError("You are already a member of this channel");
+    }
+
+    // Add user to channel (without specific subchannel)
+    await ctx.db.insert("channelMembers", {
+      userId,
+      channelId: channelId,
+      joinedAt: Date.now(),
+    });
+
+    return { success: true, message: "Successfully joined channel" };
   },
 });
 

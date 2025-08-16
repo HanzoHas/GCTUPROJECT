@@ -311,9 +311,11 @@ export default defineSchema({
       v.literal("200"), 
       v.literal("300")
     )),
+    isHidden: v.optional(v.boolean()), // Hidden channels require joining
   })
   .index("by_lecturer", ["lecturerId"])
-  .index("by_level", ["level"]),
+  .index("by_level", ["level"])
+  .index("by_visibility", ["isHidden"]),
 
   // Study Subchannels
   studySubchannels: defineTable({
