@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.convex.dev/static/version/c8c5c3e1b8b4e6f8e8f9f9f9f9f9f9f9/schema/convex.json",
+  "functions": {
+    "*": {
+      "isView": false,
+      "isMutation": false,
+      "isAction": false,
+      "isQuery": false
+    }
+  },
+  "auth": {
+    "providers": ["clerk"]
+  },
+  "schemaPath": "convex/schema.ts"
+}

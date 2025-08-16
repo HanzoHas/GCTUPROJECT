@@ -92,11 +92,10 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     setCurrentCallId(roomId);
     
     // Navigate to call page
-    navigate(`/call/${roomId}?type=${callType}&mode=create`);
+    navigate(`/call/${roomId}?type=${callType}`);
   };
 
   const initCall = async (recipientId: string, recipientName: string, variant: CallVariant, conversationId?: string) => {
-    // Only log errors, not regular flow
     if (!user) {
       toast({
         title: 'Error',
@@ -126,37 +125,48 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      // The recipientId is always a user ID in this context
-      let actualUserId = recipientId;
-
-      // Use the provided conversationId if available, otherwise generate a consistent room ID
-      const roomId = conversationId || `call_${[user.id, actualUserId].sort().join('_')}`;
+      // Check if this is a group call (roomId format: channel_xxx_xxx)
+      const isGroupCall = recipientId.startsWith('channel_');
       
-      // Send notification to recipient (this will show the popup)
-      try {
-        await notifications.sendCallNotification({
-          targetUserId: actualUserId,
-          callType: variant,
-          roomId,
-          callerName: user.username,
-        });
-        
-        // Create the call room
+      if (isGroupCall) {
+        // For group calls, use the roomId directly and create the call room
+        const roomId = recipientId;
         createCallRoom(roomId, variant);
         
         toast({
-          title: 'Call Started',
-          description: `${recipientName} has been notified of your ${variant} call`,
+          title: 'Group Call Started',
+          description: `${variant} call started in ${recipientName}`,
           variant: 'default',
         });
+      } else {
+        // For 1-on-1 calls, send notification to recipient
+        const roomId = conversationId || `call_${[user.id, recipientId].sort().join('_')}`;
         
-      } catch (error) {
-        console.error('Failed to send call notification:', error);
-        toast({
-          title: 'Call Failed',
-          description: 'Could not connect call to recipient',
-          variant: 'destructive',
-        });
+        try {
+          await notifications.sendCallNotification({
+            targetUserId: recipientId,
+            callType: variant,
+            roomId,
+            callerName: user.username,
+          });
+          
+          // Create the call room
+          createCallRoom(roomId, variant);
+          
+          toast({
+            title: 'Call Started',
+            description: `${recipientName} has been notified of your ${variant} call`,
+            variant: 'default',
+          });
+          
+        } catch (error) {
+          console.error('Failed to send call notification:', error);
+          toast({
+            title: 'Call Failed',
+            description: 'Could not connect call to recipient',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error) {
       console.error('Error initiating call:', error);
@@ -196,8 +206,8 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
     setIsInCall(true);
     setCurrentCallId(roomId);
     
-    // Navigate to call page with mode=join to indicate this user is joining an existing call
-    navigate(`/call/${roomId}?type=${callType}&mode=join`);
+    // Navigate to call page - both users join the same room
+    navigate(`/call/${roomId}?type=${callType}`);
   };
 
   const endCurrentCall = () => {

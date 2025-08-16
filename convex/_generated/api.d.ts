@@ -19,10 +19,12 @@ import type * as auth from "../auth.js";
 import type * as channelAnnouncements from "../channelAnnouncements.js";
 import type * as channels from "../channels.js";
 import type * as conversations from "../conversations.js";
+import type * as debug from "../debug.js";
 import type * as messages from "../messages.js";
+import type * as migrate from "../migrate.js";
 import type * as notifications_sendCallInvite from "../notifications/sendCallInvite.js";
 import type * as notifications from "../notifications.js";
-import type * as scripts_seed from "../scripts/seed.js";
+import type * as seedAction from "../seedAction.js";
 import type * as settings from "../settings.js";
 import type * as subchannels from "../subchannels.js";
 import type * as trending from "../trending.js";
@@ -32,6 +34,7 @@ import type * as utils_emailVerification from "../utils/emailVerification.js";
 import type * as utils_mediaService from "../utils/mediaService.js";
 import type * as utils_mediaUpload from "../utils/mediaUpload.js";
 import type * as utils_mediaWrapper from "../utils/mediaWrapper.js";
+import type * as utils_password from "../utils/password.js";
 import type * as utils_tempStorage from "../utils/tempStorage.js";
 
 /**
@@ -49,10 +52,12 @@ declare const fullApi: ApiFromModules<{
   channelAnnouncements: typeof channelAnnouncements;
   channels: typeof channels;
   conversations: typeof conversations;
+  debug: typeof debug;
   messages: typeof messages;
+  migrate: typeof migrate;
   "notifications/sendCallInvite": typeof notifications_sendCallInvite;
   notifications: typeof notifications;
-  "scripts/seed": typeof scripts_seed;
+  seedAction: typeof seedAction;
   settings: typeof settings;
   subchannels: typeof subchannels;
   trending: typeof trending;
@@ -62,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   "utils/mediaService": typeof utils_mediaService;
   "utils/mediaUpload": typeof utils_mediaUpload;
   "utils/mediaWrapper": typeof utils_mediaWrapper;
+  "utils/password": typeof utils_password;
   "utils/tempStorage": typeof utils_tempStorage;
 }>;
 export declare const api: FilterApi<

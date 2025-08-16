@@ -7,11 +7,17 @@ import { useToast } from '@/components/ui/use-toast';
 // Access ZegoUIKitPrebuilt from the global window object
 const ZegoUIKitPrebuilt = (window as any).ZegoUIKitPrebuilt;
 
+// Extend Window interface for TypeScript
+declare global {
+  interface Window {
+    zegoInstance?: any;
+  }
+}
+
 const CallPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const [searchParams] = useSearchParams();
   const callType = (searchParams.get('type') as 'audio' | 'video') ?? 'video';
-  const mode = searchParams.get('mode') || 'join'; // 'create' or 'join'
 
   const { user } = useAuth();
   const { endCurrentCall } = useZego();
@@ -20,6 +26,7 @@ const CallPage: React.FC = () => {
 
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [isRequestingPermissions, setIsRequestingPermissions] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Memoized requestPermissions function
   const requestPermissions = useCallback(async () => {
@@ -60,10 +67,26 @@ const CallPage: React.FC = () => {
     }
   }, [callType, isRequestingPermissions, toast]);
 
-  // Initialize call after permissions are granted
+  // Check if user is on mobile
+  useEffect(() => {
+    const mobileCheck = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    setIsMobile(mobileCheck);
+
+    // Auto-request permissions on desktop
+    if (!mobileCheck && user && roomId) {
+      requestPermissions();
+    }
+  }, [user, roomId]);
+
+  // Initialize call only after permissions are granted
   useEffect(() => {
     if (!user || !roomId) {
       navigate('/');
+      return;
+    }
+
+    // Only initialize call if permissions are granted
+    if (!permissionsGranted) {
       return;
     }
 
@@ -72,19 +95,6 @@ const CallPage: React.FC = () => {
 
     const initializeCall = async () => {
       try {
-        // Ensure we have permissions
-        const hasPermissions = permissionsGranted || await requestPermissions();
-        if (!hasPermissions) {
-          console.error('Required permissions not granted');
-          toast({
-            title: 'Permission Required',
-            description: 'Please allow camera and microphone access to join the call',
-            variant: 'destructive',
-          });
-          navigate('/');
-          return;
-        }
-
         const appID = import.meta.env.VITE_ZEGO_APP_ID;
         const serverSecret = import.meta.env.VITE_ZEGO_SERVER_SECRET;
 
@@ -112,27 +122,32 @@ const CallPage: React.FC = () => {
         // Store instance globally for cleanup
         window.zegoInstance = zp;
 
-        // Join or create the call based on mode
+        // Join the call room - both users should have equal access
         zp.joinRoom({
           container: document.querySelector('#zego-container'),
           maxUsers: 10, // Allow up to 10 participants
           scenario: {
-            mode: ZegoUIKitPrebuilt.GroupCall,
-            config: {
-              role: mode === 'create' ? ZegoUIKitPrebuilt.Host : ZegoUIKitPrebuilt.Audience,
-            },
+            mode: ZegoUIKitPrebuilt.GroupCall, // Use GroupCall for all calls
           },
           showRoomTimer: true,
           showScreenSharingButton: callType === 'video',
           showUserList: true,
+          showMemberList: true,
           enableVideo: callType === 'video',
           turnOnCameraWhenJoining: callType === 'video',
           turnOnMicrophoneWhenJoining: true,
+          showLeavingView: false, // Don't show leaving confirmation
           onLeaveRoom: () => {
             if (isMounted) {
               endCurrentCall();
               navigate('/');
             }
+          },
+          onUserJoin: (users: any[]) => {
+            console.log('Users joined:', users);
+          },
+          onUserLeave: (users: any[]) => {
+            console.log('Users left:', users);
           },
         });
       } catch (error) {
@@ -162,7 +177,39 @@ const CallPage: React.FC = () => {
         }
       }
     };
-  }, [user, roomId, permissionsGranted, callType, mode, navigate, requestPermissions, toast, endCurrentCall]);
+  }, [user, roomId, permissionsGranted, callType, navigate, toast, endCurrentCall]);
+
+  // Cleanup function
+  useEffect(() => {
+    return () => {
+      if (window.zegoInstance) {
+        window.zegoInstance.destroy();
+        delete window.zegoInstance;
+      }
+      endCurrentCall();
+    };
+  }, [endCurrentCall]);
+
+  // Render permission request UI for mobile
+  if (isMobile && !permissionsGranted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold mb-4">Permission Required</h1>
+          <p className="mb-6 text-gray-600">
+            To join the {callType} call, please grant camera and microphone permissions.
+          </p>
+          <button
+            onClick={requestPermissions}
+            disabled={isRequestingPermissions}
+            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRequestingPermissions ? 'Requesting...' : 'Allow Camera & Microphone'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Show permission request screen
   if (!permissionsGranted) {
@@ -199,7 +246,7 @@ const CallPage: React.FC = () => {
   return (
     <div className="h-screen w-full flex flex-col bg-black">
       <div className="bg-primary text-white p-2 text-center font-medium">
-        {mode === 'create' ? 'Creating Call Room' : 'Joining Call Room'}
+        Call Room - {callType === 'video' ? 'Video Call' : 'Audio Call'}
       </div>
       <div id="zego-container" className="flex-1 w-full"></div>
       <div className="absolute bottom-4 left-0 right-0 flex justify-center">

@@ -261,4 +261,62 @@ export const deleteConversation = mutation({
 
     return { success: true };
   },
+});
+
+// Get conversation for a specific subchannel
+export const getConversationBySubchannel = query({
+  args: {
+    sessionToken: sessionTokenValidator,
+    subchannelId: v.id("studySubchannels"),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await getAuthenticatedUser(ctx, args.sessionToken);
+    const { subchannelId } = args;
+
+    // Get the subchannel details
+    const subchannel = await ctx.db.get(subchannelId);
+    if (!subchannel) {
+      throw new ConvexError("Subchannel not found");
+    }
+
+    // Get the channel details
+    const channel = await ctx.db.get(subchannel.channelId);
+    if (!channel) {
+      throw new ConvexError("Channel not found");
+    }
+
+    // Find the conversation by name pattern (created in seed script)
+    // The seed script creates conversations with pattern: "${subchannelName} - ${channelName}"
+    const expectedConversationName = `${subchannel.name} - ${channel.name}`;
+    let conversation = await ctx.db
+      .query("conversations")
+      .filter((q) => q.eq(q.field("name"), expectedConversationName))
+      .first();
+
+    // If not found with exact match, try to find by partial match (more flexible)
+    if (!conversation) {
+      const conversations = await ctx.db
+        .query("conversations")
+        .filter((q) => q.eq(q.field("type"), "group"))
+        .collect();
+      
+      // Look for a conversation that contains both subchannel and channel names
+      conversation = conversations.find(conv => 
+        conv.name && 
+        conv.name.toLowerCase().includes(subchannel.name.toLowerCase()) &&
+        conv.name.toLowerCase().includes(channel.name.toLowerCase())
+      ) || null;
+    }
+
+    if (!conversation) {
+      throw new ConvexError("Conversation not found for this subchannel");
+    }
+
+    return {
+      conversationId: conversation._id,
+      name: conversation.name,
+      type: conversation.type,
+      isGroup: conversation.isGroup,
+    };
+  },
 }); 

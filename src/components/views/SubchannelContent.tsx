@@ -14,8 +14,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import GroupCallButton from '@/components/calls/GroupCallButton';
 import { useZego } from '@/contexts/ZegoContext';
-import { useMutation } from 'convex/react';
-import { api, convex, getConversationIdFromSubchannel } from '@/lib/convex';
+import { useMutation, useQuery } from 'convex/react';
+import { api, convex } from '@/lib/convex';
+import type { Id } from '@/convex/_generated/dataModel';
 
 interface SubchannelContentProps {
   channel: ChannelType;
@@ -27,13 +28,29 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
   const { user } = useAuth();
   const { toast } = useToast();
   const { isInCall } = useZego();
-  const [messages, setMessages] = useState<any[]>([]); // This would be replaced with real messages from context
   const [messageText, setMessageText] = useState('');
   const [showNewAnnouncement, setShowNewAnnouncement] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
+  const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendMessage = useMutation(api.messages.sendMessage);
+
+  // Get conversation ID for this subchannel
+  const conversationQuery = useQuery(api.conversations.getConversationBySubchannel, 
+    conversationId === null ? {
+      sessionToken: localStorage.getItem('sessionToken') || '',
+      subchannelId: subchannel._id as Id<"studySubchannels">
+    } : "skip"
+  );
+
+  // Get messages using real-time subscription
+  const messages = useQuery(api.messages.getMessages, 
+    conversationId ? {
+      sessionToken: localStorage.getItem('sessionToken') || '',
+      conversationId: conversationId
+    } : "skip"
+  ) || [];
   
   useEffect(() => {
     // Scroll to bottom of messages
@@ -48,14 +65,16 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
       const sessionToken = localStorage.getItem('sessionToken');
       if (!sessionToken) return;
       
-      // Use the Convex API to fetch messages for this subchannel
-      // Convert subchannel ID to the expected Id<"conversations"> type using the helper function
-      const conversationId = getConversationIdFromSubchannel(subchannel._id);
+      // Get the conversation ID for this subchannel using the backend query
+      const conversationResult = await convex.query(api.conversations.getConversationBySubchannel, {
+        sessionToken,
+        subchannelId: subchannel._id as Id<"studySubchannels">
+      });
       
       // Use the Convex API to fetch messages for this subchannel
       const response = await convex.query(api.messages.getMessages, {
         sessionToken,
-        conversationId
+        conversationId: conversationResult.conversationId
       });
       
       if (response && Array.isArray(response)) {
@@ -90,31 +109,18 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
   }, [subchannel]);
   
   const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!messageText.trim()) return;
+    e.preventDefault(); // Prevent form submission and page refresh
+    if (!messageText.trim() || !conversationId) return;
     
     try {
-      // Send message using the Convex API
-      // Convert subchannel ID to the expected Id<"conversations"> type using the helper function
-      const conversationId = getConversationIdFromSubchannel(subchannel._id);
-      
       await sendMessage({
         sessionToken: localStorage.getItem('sessionToken') || '',
-        conversationId, // Using subchannel ID as the conversation ID
+        conversationId: conversationId,
         content: messageText,
         type: 'text'
       });
       
-      // Add message to local state for immediate feedback
-      const newMessage = {
-        id: `msg-${Date.now()}`,
-        content: messageText,
-        sender: { id: user?.id || 'unknown', name: user?.username || 'Unknown', avatar: user?.profilePicture },
-        timestamp: Date.now()
-      };
-      
-      setMessages(prev => [...prev, newMessage]);
+      // Clear the message text - the message will appear via real-time subscription
       setMessageText('');
     } catch (error) {
       console.error('Error sending message:', error);

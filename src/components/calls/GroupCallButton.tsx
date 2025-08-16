@@ -7,7 +7,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useMutation } from 'convex/react';
-import { api } from '@/lib/convex';
+import { api, convex } from '@/lib/convex';
+import type { Id } from '@/convex/_generated/dataModel';
 
 // Memoized button icons to prevent unnecessary re-renders
 const CallIcons = {
@@ -63,21 +64,23 @@ const GroupCallButton: React.FC<GroupCallButtonProps> = ({
     const callType = variant === 'video' ? 'Video' : 'Audio';
     
     try {
-      // Initialize the call first to ensure we have a valid room ID
-      initCall(roomId, channelName, variant);
+      // Get the conversation ID for this subchannel using the backend query
+      const conversationResult = await convex.query(api.conversations.getConversationBySubchannel, {
+        sessionToken: localStorage.getItem('sessionToken') || '',
+        subchannelId: subchannelId as Id<"studySubchannels">
+      });
       
-      // Create a message with the call link
-      const callLink = `/call/${roomId}?type=${variant}&channelId=${channelId}&subchannelId=${subchannelId}`;
-      const messageContent = `${user.username} started a ${callType.toLowerCase()} call. [Join Call](${callLink})`;
-      
-      // Send the message to the channel
-      // Use the subchannel ID directly as the conversation ID
+      // Send notification message to the channel
+      const messageContent = `${user.username} started a ${callType.toLowerCase()} call in ${channelName}. Click to join!`;
       await sendMessage({
         sessionToken: localStorage.getItem('sessionToken') || '',
-        conversationId: subchannelId, // Use subchannel ID directly
+        conversationId: conversationResult.conversationId,
         content: messageContent,
         type: 'text'
       });
+
+      // Use the Zego context to properly initiate the group call
+      initCall(roomId, channelName, variant, conversationResult.conversationId);
       
       toast({
         title: "Call Started",
