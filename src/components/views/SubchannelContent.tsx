@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Send, Paperclip, Smile, Trash2, ArrowLeft } from 'lucide-react';
+import { Send, Paperclip, Smile, Trash2, ArrowLeft, Image } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -32,11 +32,14 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
   const { toast } = useToast();
   const { isInCall } = useZego();
   const [messageText, setMessageText] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showNewAnnouncement, setShowNewAnnouncement] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendMessage = useMutation(api.messages.sendMessage);
+  const uploadMedia = useMutation(api.utils.mediaWrapper.uploadMediaSync);
   
   // Memoize session token to prevent unnecessary re-renders
   const sessionToken = useMemo(() => getSessionToken(), []);
@@ -49,13 +52,19 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
 
   // Get messages using real-time subscription
   const conversationId = conversationQuery?.conversationId;
-  const messages = useQuery(api.messages.getMessages, 
-    conversationId ? {
-      sessionToken,
-      conversationId
-    } : "skip"
-  ) || [];
-  
+  const messages = useQuery(api.messages.getMessages, conversationId ? {
+    sessionToken,
+    conversationId,
+    limit: 50
+  } : "skip") || [];
+
+  // Debug log to check message types
+  useEffect(() => {
+    if (messages.length > 0) {
+      console.log('Messages:', messages.map(m => ({ id: m.id, type: m.type, content: m.content.substring(0, 50) })));
+    }
+  }, [messages]);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messages.length > 0) {
@@ -72,29 +81,106 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
   
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim() || !conversationId) return;
-    
-    const messageToSend = messageText.trim();
-    setMessageText(''); // Clear immediately for better UX
-    
+    if (!messageText.trim() || !conversationId || !user) return;
+
     try {
       await sendMessage({
         sessionToken,
         conversationId,
-        content: messageToSend,
-        type: 'text'
+        content: messageText.trim(),
+        type: "text"
       });
+      setMessageText('');
     } catch (error) {
-      console.error('Error sending message:', error);
-      setMessageText(messageToSend); // Restore message on error
+      console.error('Failed to send message:', error);
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
-  }, [messageText, conversationId, sendMessage, toast, sessionToken]);
-  
+  }, [messageText, conversationId, user, sendMessage, toast]);
+
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !conversationId || !user) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingFile(true);
+
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result as string;
+          
+          // Upload to Cloudinary via Convex
+          const uploadResult = await uploadMedia({ base64Data });
+          
+          if (uploadResult?.url) {
+            // Send message with image
+            await sendMessage({
+              sessionToken,
+              conversationId,
+              content: uploadResult.url,
+              type: "image"
+            });
+            
+            toast({
+              title: "Success",
+              description: "Image uploaded successfully!",
+            });
+          }
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+          toast({
+            title: "Upload Failed",
+            description: "Failed to upload image. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setUploadingFile(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to process file:', error);
+      setUploadingFile(false);
+      toast({
+        title: "Error",
+        description: "Failed to process file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [conversationId, user, sendMessage, uploadMedia, toast]);
+
+  const triggerFileUpload = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
   const handleCreateAnnouncement = async () => {
     if (!announcementTitle.trim() || !announcementContent.trim()) {
       toast({
@@ -391,7 +477,20 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
                         <p className="text-xs text-muted-foreground mb-1">{message.senderName}</p>
                       )}
                       <div className={`rounded-lg px-3 py-2 ${message.senderId === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                        {message.content}
+                        {message.type === 'image' || (message.content && message.content.startsWith('http') && (message.content.includes('.jpg') || message.content.includes('.png') || message.content.includes('.gif') || message.content.includes('.jpeg') || message.content.includes('cloudinary'))) ? (
+                          <img 
+                            src={message.content} 
+                            alt="Uploaded image" 
+                            className="max-w-xs max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => window.open(message.content, '_blank')}
+                            onError={(e) => {
+                              console.error('Image failed to load:', message.content);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          message.content
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatDistanceToNow(message.timestamp, { addSuffix: true })}
@@ -442,8 +541,20 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
                 disabled={isInCall}
               />
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                  <Paperclip className="h-4 w-4" />
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 rounded-full"
+                  onClick={triggerFileUpload}
+                  disabled={uploadingFile}
+                  title="Upload image"
+                >
+                  {uploadingFile ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
+                  ) : (
+                    <Image className="h-4 w-4" />
+                  )}
                 </Button>
                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
                   <Smile className="h-4 w-4" />
@@ -453,11 +564,20 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
             <Button 
               type="submit" 
               size="icon" 
-              disabled={!messageText.trim() || isInCall}
+              disabled={(!messageText.trim() && !uploadingFile) || isInCall}
               className="transition-all duration-200 hover:bg-primary/90"
             >
               <Send className="h-4 w-4" />
             </Button>
+            
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
           </form>
         </div>
       </div>
