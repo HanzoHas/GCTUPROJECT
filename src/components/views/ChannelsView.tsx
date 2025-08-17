@@ -212,48 +212,50 @@ function ChannelsView() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <div className="w-64 bg-background border-r flex flex-col">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Channels</h2>
+    <div className="h-full grid grid-cols-[256px_1fr] overflow-hidden">
+      {/* Channels Sidebar - Fixed Width */}
+      <div className="bg-sidebar border-r border-sidebar-border flex flex-col h-full overflow-hidden">
+        <div className="flex-none p-3">
+          <div className="flex items-center justify-between mb-4 px-2">
+            <h2 className="text-sm font-semibold text-sidebar-foreground uppercase tracking-wider">Text Channels</h2>
             <div className="flex gap-1">
               <Button 
                 size="sm" 
-                variant="outline"
+                variant="ghost"
                 onClick={() => setIsJoiningChannel(true)}
+                className="h-6 w-6 p-0 text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/20"
               >
-                <UserPlus className="h-4 w-4 mr-1" /> Join
+                <UserPlus className="h-4 w-4" />
               </Button>
               <Button 
                 size="sm" 
+                variant="ghost"
                 onClick={() => setIsCreatingChannel(true)}
+                className="h-6 w-6 p-0 text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/20"
               >
-                <Plus className="h-4 w-4 mr-1" /> New
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
           </div>
           
-          {/* Search and Filter */}
-          <div className="space-y-2 mb-4">
+          {/* Search and Filter - Discord Style */}
+          <div className="space-y-3 mb-4">
             <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-sidebar-foreground/60" />
               <Input
                 placeholder="Search channels..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
+                className="pl-9 bg-sidebar-accent/10 border-sidebar-accent/20 text-sidebar-foreground placeholder:text-sidebar-foreground/60 focus:bg-sidebar-accent/20 focus:border-sidebar-primary/50"
               />
             </div>
             
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Filter by Level:</span>
+            <div className="flex items-center justify-between px-2">
+              <span className="text-xs text-sidebar-foreground/70 uppercase tracking-wider">Filter</span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="ml-auto">
-                    <Filter className="h-3.5 w-3.5 mr-1.5" />
-                    Filter
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-sidebar-foreground hover:text-sidebar-primary hover:bg-sidebar-accent/20">
+                    <Filter className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
@@ -285,58 +287,65 @@ function ChannelsView() {
               </DropdownMenu>
             </div>
           </div>
+        </div>
 
-          {/* Channel List */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="space-y-2 pr-2">
-              {filteredChannels.length > 0 ? (
-                filteredChannels.map(channel => (
-                  <div
-                    key={channel._id}
-                    className={`p-2 rounded cursor-pointer hover:bg-accent ${
-                      selectedChannel?._id === channel._id ? 'bg-accent' : ''
-                    }`}
-                    onClick={() => setSelectedChannel(channel)}
-                  >
+        {/* Channel List - Discord Style */}
+        <div className="flex-1 overflow-y-auto px-3">
+          <div className="space-y-0.5 pr-1">
+            {filteredChannels.length > 0 ? (
+              filteredChannels.map(channel => (
+                <div
+                  key={channel._id}
+                  className={`group flex items-center px-2 py-1.5 mx-2 rounded cursor-pointer transition-all duration-150 ${
+                    selectedChannel?._id === channel._id 
+                      ? 'bg-sidebar-primary/20 text-sidebar-primary' 
+                      : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/10 hover:text-sidebar-foreground'
+                  }`}
+                  onClick={() => setSelectedChannel(channel)}
+                >
+                  <span className="text-gray-400 mr-2">#</span>
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{channel.name}</span>
-                      <div className="flex items-center space-x-1">
+                      <span className="text-sm font-medium truncate">{channel.name.toLowerCase().replace(/\s+/g, '-')}</span>
+                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {channel.level && (
-                          <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                          <span className="text-xs bg-sidebar-accent/20 text-sidebar-foreground/70 px-1.5 py-0.5 rounded">
                             {channel.level}
                           </span>
                         )}
                         {channel.isPrivate && (
-                          <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Lock className="h-3 w-3 text-sidebar-foreground/60" />
                         )}
                       </div>
                     </div>
-                    {channel.description && (
-                      <p className="text-sm text-muted-foreground truncate">
+                    {channel.description && selectedChannel?._id === channel._id && (
+                      <p className="text-xs text-sidebar-foreground/60 truncate mt-0.5">
                         {channel.description}
                       </p>
                     )}
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-4 text-muted-foreground">
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 px-4">
+                <div className="text-sidebar-foreground/60 text-sm">
                   {searchQuery || !levelFilter.all ? 'No channels found' : 'No channels available'}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Content Area - Takes remaining space */}
+      <div className="h-full overflow-hidden">
         {selectedChannel ? (
           <ChannelContent
             channel={selectedChannel}
             onClose={() => setSelectedChannel(null)}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <div className="h-full flex items-center justify-center text-muted-foreground bg-gradient-to-br from-background/95 to-background/90">
             Select a channel to view its content
           </div>
         )}

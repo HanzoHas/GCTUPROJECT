@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Send, Image, Paperclip, Smile, Plus, Trash2, AudioLines, Video } from 'lucide-react';
+import { Send, Image, Paperclip, Smile, Plus, Trash2, AudioLines, Video, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,9 +21,10 @@ import type { Id } from '../../../convex/_generated/dataModel';
 interface SubchannelContentProps {
   channel: ChannelType;
   subchannel: SubchannelType;
+  onBack?: () => void;
 }
 
-export function SubchannelContent({ channel, subchannel }: SubchannelContentProps) {
+export function SubchannelContent({ channel, subchannel, onBack }: SubchannelContentProps) {
   const { createChannelAnnouncement, channelAnnouncements, refreshAnnouncements, deleteChannelAnnouncement, canManageChannel } = useChannel();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -206,7 +207,17 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
     return (
       <div className="h-full flex flex-col p-4 overflow-hidden">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Announcements</h2>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onBack}
+              className="h-8 w-8"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-xl font-semibold">Announcements</h2>
+          </div>
           {canManageChannel(channel._id) && (
             <Dialog open={showNewAnnouncement} onOpenChange={setShowNewAnnouncement}>
               <DialogTrigger asChild>
@@ -340,99 +351,149 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
   
   // For TEXT and CLASS channels (chat functionality)
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex justify-between items-center p-4 border-b">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <span>#{subchannel.name}</span>
-          {subchannel.description && (
-            <span className="text-sm font-normal text-muted-foreground">
-              {subchannel.description}
-            </span>
-          )}
-        </h2>
-        <div className="flex items-center gap-2">
-          {/* Only show call buttons if user is channel owner */}
-          {canManageChannel(channel._id) && (
-            <>
-              <GroupCallButton
-                channelId={channel._id}
-                subchannelId={subchannel._id}
-                channelName={subchannel.name}
-                variant="audio"
-                isChannelOwner={canManageChannel(channel._id)}
-              />
-              <GroupCallButton
-                channelId={channel._id}
-                subchannelId={subchannel._id}
-                channelName={subchannel.name}
-                variant="video"
-                isChannelOwner={canManageChannel(channel._id)}
-              />
-            </>
-          )}
-        </div>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-full">
-        <div className="min-h-0 flex-1">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'} mb-4`}
+    <div className="w-full h-full flex flex-col md:col-span-7 lg:col-span-7 bg-gradient-to-br from-background/95 to-background/90 overflow-hidden isolate">
+      <div className="h-full flex flex-col overflow-hidden">
+        {/* Chat Header */}
+        <div className="flex-none flex items-center justify-between p-3 border-b border-accent/10 backdrop-blur-sm bg-background/80 z-10 min-h-[60px]">
+          <div className="flex items-center flex-1">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onBack}
+              className="mr-1 rounded-full h-8 w-8 flex-shrink-0"
             >
-              <div className="flex max-w-[80%]">
-                {message.senderId !== user?.id && (
-                  <Avatar className="h-8 w-8 mr-2 mt-1">
-                    <AvatarImage src={message.senderPicture} />
-                    <AvatarFallback>{message.senderName?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
-                  </Avatar>
-                )}
-                <div>
-                  {message.senderId !== user?.id && (
-                    <p className="text-xs text-muted-foreground mb-1">{message.senderName}</p>
-                  )}
-                  <div className={`rounded-lg px-3 py-2 ${message.senderId === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                    {message.content}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDistanceToNow(message.timestamp, { addSuffix: true })}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-      
-      <div className="flex-none p-4 border-t">
-        <form onSubmit={handleSendMessage} className="flex items-end gap-2">
-          <div className="flex-1 relative">
-            <Input
-              placeholder={`Send a message in #${subchannel.name}`}
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              className="pr-12"
-              disabled={isInCall} // Disable input when in a call
-            />
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                <Smile className="h-4 w-4" />
-              </Button>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            
+            <Avatar className="h-10 w-10 border-2 border-primary/10 mr-3">
+              <AvatarFallback className="bg-accent/10 text-accent">
+                {subchannel.name.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold leading-none truncate">#{subchannel.name}</h3>
+              {subchannel.description && (
+                <p className="text-xs text-muted-foreground flex items-center truncate">
+                  {subchannel.description}
+                </p>
+              )}
             </div>
           </div>
-          <Button 
-            type="submit" 
-            size="icon" 
-            disabled={!messageText.trim() || isInCall}
-            className="transition-all duration-200 hover:bg-primary/90"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
+          
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Only show call buttons if user is channel owner */}
+            {canManageChannel(channel._id) && (
+              <>
+                <GroupCallButton
+                  channelId={channel._id}
+                  subchannelId={subchannel._id}
+                  channelName={subchannel.name}
+                  variant="audio"
+                  isChannelOwner={canManageChannel(channel._id)}
+                />
+                <GroupCallButton
+                  channelId={channel._id}
+                  subchannelId={subchannel._id}
+                  channelName={subchannel.name}
+                  variant="video"
+                  isChannelOwner={canManageChannel(channel._id)}
+                />
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-4 scrollbar-thin bg-gradient-radial from-background/50 to-background/95">
+          {messages.length > 0 ? (
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'} mb-4`}
+                >
+                  <div className="flex max-w-[80%]">
+                    {message.senderId !== user?.id && (
+                      <Avatar className="h-8 w-8 mr-2 mt-1">
+                        <AvatarImage src={message.senderPicture} />
+                        <AvatarFallback>{message.senderName?.substring(0, 2).toUpperCase() || 'U'}</AvatarFallback>
+                      </Avatar>
+                    )}
+                    <div>
+                      {message.senderId !== user?.id && (
+                        <p className="text-xs text-muted-foreground mb-1">{message.senderName}</p>
+                      )}
+                      <div className={`rounded-lg px-3 py-2 ${message.senderId === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                        {message.content}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center mb-4 bg-muted/30 h-16 w-16 rounded-full backdrop-blur-sm">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    className="h-8 w-8 text-muted-foreground"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium mb-2">No messages yet</h3>
+                <p className="text-muted-foreground">
+                  Start the conversation by sending a message.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Message Input */}
+        <div className="flex-none p-4 border-t border-accent/10 bg-background/80 backdrop-blur-sm">
+          <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+            <div className="flex-1 relative">
+              <Input
+                placeholder={`Send a message in #${subchannel.name}`}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                className="pr-12"
+                disabled={isInCall}
+              />
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                  <Smile className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <Button 
+              type="submit" 
+              size="icon" 
+              disabled={!messageText.trim() || isInCall}
+              className="transition-all duration-200 hover:bg-primary/90"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
