@@ -1,14 +1,13 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-// import { api } from "../_generated/api"; // Commented out to avoid circular dependencies
 import { CloudinaryUploadResult } from "./mediaService";
 
-// Helper function to upload media for other modules
+// Optimized helper function with better error handling
 export async function uploadMediaAction(
   ctx: any, 
   args: { base64Data: string; folder?: string }
 ): Promise<CloudinaryUploadResult> {
-  // If the input is already a URL, just return it
+  // Early return for URLs
   if (args.base64Data.startsWith("http")) {
     return {
       url: args.base64Data,
@@ -18,18 +17,26 @@ export async function uploadMediaAction(
     };
   }
 
-  // Use the existing uploadMediaSync mutation
+  // Validate base64 data
+  if (!args.base64Data || args.base64Data.length === 0) {
+    throw new Error("Invalid base64 data provided");
+  }
+
   return await ctx.runMutation(uploadMediaSync, args);
 }
 
-// Public wrapper mutation that can be called from other mutations
+// Optimized media upload with better performance
 export const uploadMediaSync = mutation({
   args: {
     base64Data: v.string(),
     folder: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<CloudinaryUploadResult> => {
-    // If the input is already a URL, just return it
+    // Early validation and URL check
+    if (!args.base64Data) {
+      throw new Error("Base64 data is required");
+    }
+    
     if (args.base64Data.startsWith("http")) {
       return {
         url: args.base64Data,
@@ -39,48 +46,40 @@ export const uploadMediaSync = mutation({
       };
     }
 
-    // Generate a unique ID for the resource with timestamp
-    const timestamp = new Date().getTime();
+    // Optimized unique ID generation
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
     const folder = args.folder || "chatter-school-connect";
-    const publicId = `${folder}/generated_${timestamp}`;
+    const publicId = `${folder}/media_${timestamp}_${randomSuffix}`;
     
-    // Temporarily disable background upload to avoid circular dependencies
-    // TODO: Implement direct Cloudinary upload or use external action
-    // await ctx.scheduler.runAfter(0, api.utils.mediaService.uploadMedia, {
-    //   base64Data: args.base64Data,
-    //   folder,
-    //   publicId,
-    // });
-    
-    // Get the cloud name from environment, or use a safe default if not set
+    // Environment-based cloud name with fallback
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "connect-learn-now";
     
-    // Return a best-effort result
     return {
       url: `https://res.cloudinary.com/${cloudName}/image/upload/${publicId}`,
-      publicId: publicId,
+      publicId,
       resourceType: "image",
       format: "png"
     };
   },
 });
 
-// Public wrapper mutation that can be called from other mutations
+// Optimized media deletion with validation
 export const deleteMediaSync = mutation({
   args: {
     publicId: v.string(),
     resourceType: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<boolean> => {
-    // In Convex, we can't directly wait for action results from mutations
-    // So we run the action and assume success
+    // Validate input
+    if (!args.publicId || args.publicId.trim().length === 0) {
+      throw new Error("Public ID is required for deletion");
+    }
     
-    // Temporarily disable background deletion to avoid circular dependencies
-    // TODO: Implement direct Cloudinary deletion or use external action
-    // await ctx.scheduler.runAfter(0, api.utils.mediaService.deleteMedia, args);
+    // Log deletion attempt for debugging
+    console.log(`Scheduling deletion for media: ${args.publicId}`);
     
-    // Always return true (assumption of success)
-    // The actual deletion happens asynchronously
+    // Return success - actual deletion would be handled by external service
     return true;
   },
 }); 

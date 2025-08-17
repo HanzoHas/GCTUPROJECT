@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { auth, saveSessionToken, clearSessionToken, UserProfile } from '../lib/convex';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { auth, saveSessionToken, clearSessionToken } from '@/lib/convex';
 import { useToast } from '@/components/ui/use-toast';
 import { Id } from '../../convex/_generated/dataModel';
 
@@ -15,6 +15,14 @@ interface BackendUser {
 
 // Our app needs these additional fields
 type User = UserProfile;
+
+// Helper to transform backend user to UserProfile
+const transformBackendUser = (backendUser: BackendUser): UserProfile => ({
+  ...backendUser,
+  role: 'student',
+  isOnline: true,
+  lastSeen: Date.now()
+});
 
 interface AuthContextType {
   user: User | null;
@@ -63,21 +71,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [verificationUsername, setVerificationUsername] = useState('');
   const [pendingPassword, setPendingPassword] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Memoize session token access
+  const getSessionToken = useCallback(() => localStorage.getItem("sessionToken"), []);
 
   // Function to check auth status
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
+      const sessionToken = getSessionToken();
+      if (!sessionToken) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
+
       const currentUser = await auth.me() as BackendUser | null;
       if (currentUser) {
-        // Add the missing fields that UserProfile requires
-        const userWithRequiredFields: UserProfile = {
-          ...currentUser,
-          role: 'student',
-          isOnline: true,
-          lastSeen: Date.now()
-        };
-        
-        setUser(userWithRequiredFields);
+        setUser(transformBackendUser(currentUser));
         setIsAuthenticated(true);
       } else {
         setUser(null);
@@ -91,7 +102,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearSessionToken();
       
       // Show toast only if there was likely a previous session
-      if (localStorage.getItem("sessionToken")) {
+      const hadSession = getSessionToken();
+      if (hadSession) {
         toast({
           title: "Authentication Error",
           description: "Your session has expired. Please log in again.",
@@ -101,89 +113,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast, getSessionToken]);
 
-  // Initial auth check
+  // Initial auth check on mount
   useEffect(() => {
-    checkAuth();
-  }, []);
-  
-  // Periodic auth check (every 5 minutes)
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    
-    const intervalId = setInterval(() => {
-      checkAuth();
-    }, 5 * 60 * 1000); // 5 minutes
-    
-    return () => clearInterval(intervalId);
-  }, [isAuthenticated]);
+    const performInitialCheck = async () => {
+      try {
+        await checkAuth();
+      } catch (error) {
+        console.error('Initial auth check failed:', error);
+        setIsLoading(false);
+      }
+    };
 
-  const login = async (email: string, password: string) => {
+    performInitialCheck();
+    
+    // Set up periodic auth check every 5 minutes
+    const interval = setInterval(() => {
+      checkAuth().catch(error => {
+        console.error('Periodic auth check failed:', error);
+      });
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [checkAuth]);
+
+  const login = useCallback(async (email: string, password: string) => {
     try {
       const result = await auth.login(email, password);
-      if (result && result.token) {
+      if (result?.token) {
         saveSessionToken(result.token);
         const currentUser = await auth.me() as BackendUser | null;
         if (currentUser) {
-          // Add the missing fields that UserProfile requires
-          const userWithRequiredFields: UserProfile = {
-            ...currentUser,
-            role: 'student',
-            isOnline: true,
-            lastSeen: Date.now()
-          };
-          
-          setUser(userWithRequiredFields);
+          setUser(transformBackendUser(currentUser));
           setIsAuthenticated(true);
+          return { success: true };
         }
-      } else {
-        throw new Error("Login failed");
       }
+      return { success: false, error: 'Login failed' };
     } catch (error: any) {
-      // Check if email needs verification
-      if (error.message && error.message.includes("Email verification required")) {
-        setNeedsVerification(true);
-        setVerificationEmail(email);
-        toast({
-          title: "Verification Required",
-          description: "Please verify your email address before logging in.",
-        });
-      } else {
-        toast({
-          title: "Login Failed",
-          description: error.message || "Invalid credentials",
-          variant: "destructive",
-        });
-      }
-      throw error;
+      console.error('Login error:', error);
+      toast({
+        title: "Login Failed",
+        description: error.message || "An error occurred during login",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message || 'Login failed' };
     }
-  };
+  }, [toast]);
 
   const register = async (username: string, email: string, password: string, confirmPassword?: string) => {
     try {
       const result = await auth.register(username, email, password, confirmPassword);
-      if (result && result.token) {
+      if (result?.token) {
         saveSessionToken(result.token);
         const currentUser = await auth.me() as BackendUser | null;
         if (currentUser) {
-          // Add the missing fields that UserProfile requires
-          const userWithRequiredFields: UserProfile = {
-            ...currentUser,
-            role: 'student',
-            isOnline: true,
-            lastSeen: Date.now()
-          };
-          
-          setUser(userWithRequiredFields);
+          setUser(transformBackendUser(currentUser));
           setIsAuthenticated(true);
         }
       } else {
         throw new Error("Registration failed");
       }
     } catch (error: any) {
-      // Check if email needs verification
-      if (error.message && error.message.includes("Email verification required")) {
+      if (error.message?.includes("Email verification required")) {
         setNeedsVerification(true);
         setVerificationEmail(email);
         setVerificationUsername(username);
@@ -264,26 +257,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     clearSessionToken();
   };
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       if (isAuthenticated) {
         const currentUser = await auth.me() as BackendUser | null;
         if (currentUser) {
-          // Add the missing fields that UserProfile requires
-          const userWithRequiredFields: UserProfile = {
-            ...currentUser,
-            role: 'student',
-            isOnline: true,
-            lastSeen: Date.now()
-          };
-          
-          setUser(userWithRequiredFields);
+          setUser(transformBackendUser(currentUser));
         }
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
     }
-  };
+  }, [isAuthenticated]);
 
   return (
     <AuthContext.Provider 

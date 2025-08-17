@@ -423,41 +423,35 @@ export const getMessages = query({
     const messageIds = messages.map(m => m._id);
     const senderIds = [...new Set(messages.map(m => m.senderId))];
 
-    // Get read receipts for these messages
-    const readReceipts = await ctx.db
-      .query("readReceipts")
-      .collect();
-    
-    // Filter read receipts for our messages
-    const relevantReadReceipts = readReceipts.filter(r => 
-      messageIds.some(id => id.toString() === r.messageId.toString())
+    // Optimize: Get read receipts only for these specific messages
+    const readReceiptPromises = messageIds.map(messageId => 
+      ctx.db
+        .query("readReceipts")
+        .withIndex("by_message", (q) => q.eq("messageId", messageId))
+        .collect()
     );
+    const readReceiptArrays = await Promise.all(readReceiptPromises);
+    const relevantReadReceipts = readReceiptArrays.flat();
     
-    // Get reactions for these messages
-    const reactions = await ctx.db
-      .query("messageReactions")
-      .collect();
-      
-    // Filter reactions for our messages
-    const relevantReactions = reactions.filter(r => 
-      messageIds.some(id => id.toString() === r.messageId.toString())
+    // Optimize: Get reactions only for these specific messages
+    const reactionPromises = messageIds.map(messageId => 
+      ctx.db
+        .query("messageReactions")
+        .withIndex("by_message", (q) => q.eq("messageId", messageId))
+        .collect()
     );
+    const reactionArrays = await Promise.all(reactionPromises);
+    const relevantReactions = reactionArrays.flat();
 
-    // Get user info for all involved users
-    const users = await Promise.all(
-      senderIds.map(async (id) => {
-        try {
-          return await ctx.db.get(id);
-        } catch (e) {
-          return null;
-        }
-      })
-    );
+    // Optimize: Batch user queries and create map in one pass
+    const userPromises = senderIds.map(id => ctx.db.get(id).catch(() => null));
+    const users = await Promise.all(userPromises);
     
-    // Create a map of user ID to user object
     const userMap: Record<string, any> = {};
-    users.filter(Boolean).forEach(u => {
-      if (u) userMap[u._id.toString()] = u;
+    users.forEach((user, index) => {
+      if (user) {
+        userMap[senderIds[index].toString()] = user;
+      }
     });
 
     // Process messages with additional data

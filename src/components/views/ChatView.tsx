@@ -1,19 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useChat, Message, Conversation } from '@/contexts/ChatContext';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useChat, Conversation } from '@/contexts/ChatContext';
 import ConversationList from '../chat/ConversationList';
 import ChatMessage from '../chat/ChatMessage';
 import MessageInput from '../chat/MessageInput';
-import { Info, ArrowLeft, Menu, Search, Users } from 'lucide-react';
+import { Info, ArrowLeft, Search, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { VideoCallButton, GroupCallButton } from '../calls';
+import { VideoCallButton } from '../calls';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
-import styles from './ChatView.module.css';
 
 const ChatView = () => {
   const {
@@ -36,21 +35,22 @@ const ChatView = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useAuth();
 
+  // Memoized resize handler
+  const handleResize = useCallback(() => {
+    const mobile = window.innerWidth < 768;
+    setIsMobile(mobile);
+    if (!mobile) {
+      setShowConversationList(true);
+    } else if (currentConversation) {
+      setShowConversationList(false);
+    }
+  }, [currentConversation]);
+
   // Check for mobile screens
   useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (!mobile) {
-        setShowConversationList(true);
-      } else if (currentConversation) {
-        setShowConversationList(false);
-      }
-    };
-    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [currentConversation]);
+  }, [handleResize]);
 
   useEffect(() => {
     if (currentConversation) {
@@ -68,7 +68,7 @@ const ChatView = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = (content: string, type: string) => {
+  const handleSendMessage = useCallback((content: string, type: string) => {
     if (!content.trim()) return;
     
     sendMessage(
@@ -77,9 +77,9 @@ const ChatView = () => {
       replyingTo?.id
     );
     setReplyingTo(null);
-  };
+  }, [sendMessage, replyingTo?.id]);
 
-  const handleReply = (messageId: string) => {
+  const handleReply = useCallback((messageId: string) => {
     const message = messages.find(m => m.id === messageId);
     if (message) {
       setReplyingTo({
@@ -87,32 +87,28 @@ const ChatView = () => {
         content: message.content,
       });
     }
-  };
+  }, [messages]);
 
-  const handleSelectConversation = (conversation: Conversation) => {
+  const handleSelectConversation = useCallback((conversation: Conversation) => {
     setCurrentConversation(conversation);
     if (isMobile) {
       setShowConversationList(false);
     }
-  };
+  }, [setCurrentConversation, isMobile]);
 
-  const toggleConversationList = () => {
+  const toggleConversationList = useCallback(() => {
     setShowConversationList(prev => !prev);
-  };
+  }, []);
 
-  // Function to get the display name for a conversation
-  const getConversationDisplayName = (conversation: Conversation) => {
-    // If it's explicitly a group conversation
+  // Memoized conversation display name
+  const getConversationDisplayName = useCallback((conversation: Conversation) => {
     if (conversation.isGroup) {
       return conversation.name;
     }
     
-    // For direct conversations, show only the other user's name
     if (!conversation.members || !Array.isArray(conversation.members)) {
-      // If the name contains "&", it might be a combined name - extract just the other person
-      if (conversation.name && conversation.name.includes('&')) {
+      if (conversation.name?.includes('&')) {
         const names = conversation.name.split('&').map(name => name.trim());
-        // Try to find a name that doesn't match the current user's username
         const otherName = names.find(name => name !== user?.username);
         return otherName || conversation.name || 'Unnamed Conversation';
       }
@@ -121,16 +117,16 @@ const ChatView = () => {
     
     const otherMember = conversation.members.find(member => member.id !== user?.id);
     return otherMember ? otherMember.username : conversation.name || 'Unnamed Conversation';
-  };
+  }, [user?.username, user?.id]);
   
-  const getRecipientId = (conversation: Conversation) => {
+  const getRecipientId = useCallback((conversation: Conversation) => {
     if (!conversation.members || !Array.isArray(conversation.members)) {
       return '';
     }
     
     const otherMember = conversation.members.find(member => member.id !== user?.id);
     return otherMember ? otherMember.id : '';
-  };
+  }, [user?.id]);
 
   return (
     <div className="h-full bg-gradient-to-br from-background to-background/95 flex flex-col md:grid md:grid-cols-12 lg:grid-cols-10 gap-0 relative overflow-hidden">

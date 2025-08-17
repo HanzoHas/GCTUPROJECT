@@ -78,44 +78,68 @@ export const getUserConversations = query({
 
     const conversationIds = memberRecords.map((record) => record.conversationId);
 
-    // Get full conversation details
-    const conversations = await Promise.all(
-      conversationIds.map(async (id) => {
-        const conversation = await ctx.db.get(id);
-        if (!conversation) return null;
-
-        // Get other members for direct conversations
-        let otherMember = null;
-        if (!conversation.isGroup) {
-          const members = await ctx.db
-          .query("conversationMembers")
-            .withIndex("by_conversation", (q) => q.eq("conversationId", id))
-            .filter((q) => q.neq(q.field("userId"), userId))
-              .first();
-              
-          if (members) {
-            otherMember = await ctx.db.get(members.userId);
-          }
-        }
-
-        return {
-          id: conversation._id,
-          name: conversation.name || (otherMember?.username || ""),
-          avatar: conversation.avatar || otherMember?.profilePicture,
-          isGroup: conversation.isGroup,
-          type: conversation.type,
-          lastMessageId: conversation.lastMessageId,
-          lastMessageTimestamp: conversation.lastMessageTimestamp,
-          isActive: conversation.isActive,
-          otherMember: otherMember ? {
-            id: otherMember._id,
-            username: otherMember.username,
-            profilePicture: otherMember.profilePicture,
-            status: otherMember.status,
-          } : null,
-        };
-      })
+    // Batch fetch all conversations
+    const conversationPromises = conversationIds.map(id => ctx.db.get(id));
+    const conversationResults = await Promise.all(conversationPromises);
+    
+    // Batch fetch all conversation members for direct conversations
+    const directConversationIds = conversationResults
+      .filter(conv => conv && !conv.isGroup)
+      .map(conv => conv!._id);
+      
+    const otherMemberPromises = directConversationIds.map(id => 
+      ctx.db
+        .query("conversationMembers")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", id))
+        .filter((q) => q.neq(q.field("userId"), userId))
+        .first()
     );
+    const otherMemberRecords = await Promise.all(otherMemberPromises);
+    
+    // Batch fetch user details for other members
+    const otherUserIds = otherMemberRecords.filter(Boolean).map(record => record!.userId);
+    const otherUserPromises = otherUserIds.map(id => ctx.db.get(id));
+    const otherUsers = await Promise.all(otherUserPromises);
+    
+    // Create mapping for quick lookup
+    const otherUserMap: Record<string, any> = {};
+    otherUsers.forEach((user, index) => {
+      if (user) {
+        otherUserMap[otherUserIds[index].toString()] = user;
+      }
+    });
+
+    // Process conversations with cached data
+    const conversations = conversationResults.map((conversation, index) => {
+      if (!conversation) return null;
+      
+      let otherMember = null;
+      if (!conversation.isGroup) {
+        const memberRecord = otherMemberRecords.find(record => 
+          record && record.conversationId.toString() === conversation._id.toString()
+        );
+        if (memberRecord) {
+          otherMember = otherUserMap[memberRecord.userId.toString()] || null;
+        }
+      }
+
+      return {
+        id: conversation._id,
+        name: conversation.name || (otherMember?.username || ""),
+        avatar: conversation.avatar || otherMember?.profilePicture,
+        isGroup: conversation.isGroup,
+        type: conversation.type,
+        lastMessageId: conversation.lastMessageId,
+        lastMessageTimestamp: conversation.lastMessageTimestamp,
+        isActive: conversation.isActive,
+        otherMember: otherMember ? {
+          id: otherMember._id,
+          username: otherMember.username,
+          profilePicture: otherMember.profilePicture,
+          status: otherMember.status,
+        } : null,
+      };
+    });
 
     return conversations.filter((c): c is NonNullable<typeof c> => c !== null);
   },

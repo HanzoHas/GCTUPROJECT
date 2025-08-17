@@ -8,14 +8,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Send, Image, Paperclip, Smile, Plus, Trash2, AudioLines, Video, ArrowLeft } from 'lucide-react';
+import { Send, Paperclip, Smile, Trash2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import GroupCallButton from '@/components/calls/GroupCallButton';
 import { useZego } from '@/contexts/ZegoContext';
 import { useMutation, useQuery } from 'convex/react';
-import { api, convex } from '@/lib/convex';
+import { api } from '@/lib/convex';
+import { getSessionToken } from '@/lib/utils';
+import { MessageSkeleton } from '@/components/ui/loading-skeleton';
 import type { Id } from '../../../convex/_generated/dataModel';
 
 interface SubchannelContentProps {
@@ -33,86 +35,43 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
   const [showNewAnnouncement, setShowNewAnnouncement] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
-  const [conversationId, setConversationId] = useState<Id<"conversations"> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendMessage = useMutation(api.messages.sendMessage);
+  
+  // Memoize session token to prevent unnecessary re-renders
+  const sessionToken = useMemo(() => getSessionToken(), []);
 
-  // Get conversation ID for this subchannel with error handling
-  const conversationQuery = useQuery(api.conversations.getConversationBySubchannel, 
-    conversationId === null ? {
-      sessionToken: localStorage.getItem('sessionToken') || '',
-      subchannelId: subchannel._id as Id<"studySubchannels">
-    } : "skip"
-  );
+  // Get conversation ID for this subchannel
+  const conversationQuery = useQuery(api.conversations.getConversationBySubchannel, {
+    sessionToken,
+    subchannelId: subchannel._id as Id<"studySubchannels">
+  });
 
   // Get messages using real-time subscription
+  const conversationId = conversationQuery?.conversationId;
   const messages = useQuery(api.messages.getMessages, 
     conversationId ? {
-      sessionToken: localStorage.getItem('sessionToken') || '',
-      conversationId: conversationId
+      sessionToken,
+      conversationId
     } : "skip"
   ) || [];
   
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    // Scroll to bottom of messages only when new messages arrive
     if (messages.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages.length]);
-  
-  // Function to fetch messages for the current subchannel
-  const fetchMessages = async () => {
-    try {
-      if (subchannel.type !== 'TEXT' && subchannel.type !== 'CLASS') return;
-      
-      const sessionToken = localStorage.getItem('sessionToken');
-      if (!sessionToken) return;
-      
-      // Get the conversation ID for this subchannel using the backend query
-      const conversationResult = await convex.query(api.conversations.getConversationBySubchannel, {
-        sessionToken,
-        subchannelId: subchannel._id as Id<"studySubchannels">
-      });
-      
-      // Use the Convex API to fetch messages for this subchannel
-      const response = await convex.query(api.messages.getMessages, {
-        sessionToken,
-        conversationId: conversationResult.conversationId
-      });
-      
-      if (response && Array.isArray(response)) {
-        // Messages are already filtered by conversationId on the server
-        // Using real-time subscription now, no need to set local state
-      }
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  // Set up real-time subscription for messages
-  useEffect(() => {
-    if (conversationQuery && conversationQuery.conversationId && !conversationId) {
-      setConversationId(conversationQuery.conversationId);
-    }
-  }, [conversationQuery, conversationId]);
 
+  // Refresh announcements when subchannel changes to announcement type
   useEffect(() => {
-    // Reset conversation ID when subchannel changes
-    setConversationId(null);
-    
-    // Fetch announcements if it's an announcement channel
     if (subchannel.type === 'ANNOUNCEMENT') {
       refreshAnnouncements();
     }
-  }, [subchannel]);
+  }, [subchannel.type, refreshAnnouncements]);
   
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent form submission and page refresh
+    e.preventDefault();
     if (!messageText.trim() || !conversationId) return;
     
     const messageToSend = messageText.trim();
@@ -120,8 +79,8 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
     
     try {
       await sendMessage({
-        sessionToken: localStorage.getItem('sessionToken') || '',
-        conversationId: conversationId,
+        sessionToken,
+        conversationId,
         content: messageToSend,
         type: 'text'
       });
@@ -134,7 +93,7 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
         variant: "destructive"
       });
     }
-  }, [messageText, conversationId, sendMessage, toast]);
+  }, [messageText, conversationId, sendMessage, toast, sessionToken]);
   
   const handleCreateAnnouncement = async () => {
     if (!announcementTitle.trim() || !announcementContent.trim()) {
@@ -406,7 +365,14 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
         
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 scrollbar-thin bg-gradient-radial from-background/50 to-background/95">
-          {messages.length > 0 ? (
+          {!conversationId ? (
+            // Loading state
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <MessageSkeleton key={i} />
+              ))}
+            </div>
+          ) : messages.length > 0 ? (
             <div className="space-y-4">
               {messages.map((message) => (
                 <div

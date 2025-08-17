@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { SubchannelSkeleton } from '@/components/ui/loading-skeleton';
 
 interface ChannelContentProps {
   channel: ChannelType;
@@ -175,11 +176,10 @@ export function ChannelContent({ channel, onClose }: ChannelContentProps) {
             <div className="flex-1 overflow-hidden">
               <div className="h-full overflow-y-auto p-4 space-y-2">
                 {isLoadingSubchannels ? (
-                  <div className="text-center py-12">
-                    <div className="inline-flex items-center justify-center mb-4 bg-muted/30 h-12 w-12 rounded-full">
-                      <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Loading subchannels...</p>
+                  <div className="space-y-2">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <SubchannelSkeleton key={i} />
+                    ))}
                   </div>
                 ) : subchannels.length > 0 ? (
                   subchannels.map(subchannel => (
