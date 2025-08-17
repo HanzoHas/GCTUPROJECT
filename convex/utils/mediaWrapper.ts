@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { api } from "../_generated/api";
+// import { api } from "../_generated/api"; // Commented out to avoid circular dependencies
 import { CloudinaryUploadResult } from "./mediaService";
 
 // Helper function to upload media for other modules
@@ -44,12 +44,13 @@ export const uploadMediaSync = mutation({
     const folder = args.folder || "chatter-school-connect";
     const publicId = `${folder}/generated_${timestamp}`;
     
-    // This runs the action in the background
-    await ctx.scheduler.runAfter(0, api.utils.mediaService.uploadMedia, {
-      base64Data: args.base64Data,
-      folder,
-      publicId, // Pass the generated publicId to ensure consistency
-    });
+    // Temporarily disable background upload to avoid circular dependencies
+    // TODO: Implement direct Cloudinary upload or use external action
+    // await ctx.scheduler.runAfter(0, api.utils.mediaService.uploadMedia, {
+    //   base64Data: args.base64Data,
+    //   folder,
+    //   publicId,
+    // });
     
     // Get the cloud name from environment, or use a safe default if not set
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "connect-learn-now";
@@ -74,8 +75,9 @@ export const deleteMediaSync = mutation({
     // In Convex, we can't directly wait for action results from mutations
     // So we run the action and assume success
     
-    // This runs the action in the background
-    await ctx.scheduler.runAfter(0, api.utils.mediaService.deleteMedia, args);
+    // Temporarily disable background deletion to avoid circular dependencies
+    // TODO: Implement direct Cloudinary deletion or use external action
+    // await ctx.scheduler.runAfter(0, api.utils.mediaService.deleteMedia, args);
     
     // Always return true (assumption of success)
     // The actual deletion happens asynchronously

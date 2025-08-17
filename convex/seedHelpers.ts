@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -245,14 +245,14 @@ export const insertConversationMember = mutation({
   },
 });
 
-export const getAllChannels = query({
+export const getAllChannels = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("studyChannels").collect();
   },
 });
 
-export const updateChannelVisibility = mutation({
+export const updateChannelVisibility = internalMutation({
   args: {
     channelId: v.id("studyChannels"),
     isHidden: v.boolean(),

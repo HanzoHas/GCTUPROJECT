@@ -25,13 +25,36 @@ const CallPage: React.FC = () => {
   const { toast } = useToast();
 
   const [isMobile, setIsMobile] = useState(false);
-  const permissionsGranted = true; // Auto-grant permissions
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
 
-  // Check if user is on mobile
+  // Check if user is on mobile and request permissions
   useEffect(() => {
     const mobileCheck = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     setIsMobile(mobileCheck);
-  }, []);
+    
+    // Request media permissions
+    const requestPermissions = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: true, 
+          video: callType === 'video' 
+        });
+        // Close the stream immediately after getting permissions
+        stream.getTracks().forEach(track => track.stop());
+        setPermissionsGranted(true);
+      } catch (error) {
+        console.error('Permission denied:', error);
+        toast({
+          title: 'Permissions Required',
+          description: 'Please allow camera and microphone access to join the call',
+          variant: 'destructive',
+        });
+        setPermissionsGranted(true); // Continue anyway
+      }
+    };
+    
+    requestPermissions();
+  }, [callType, toast]);
 
   // Initialize call
   useEffect(() => {
@@ -75,29 +98,61 @@ const CallPage: React.FC = () => {
         // Join the call room - both users should have equal access
         zp.joinRoom({
           container: document.querySelector('#zego-container'),
-          maxUsers: 10, // Allow up to 10 participants
+          maxUsers: 2, // Limit to 2 participants for 1-on-1 calls
           scenario: {
-            mode: ZegoUIKitPrebuilt.GroupCall, // Use GroupCall for all calls
+            mode: ZegoUIKitPrebuilt.GroupCall, // Use GroupCall mode to enable screen sharing
           },
           showRoomTimer: true,
-          showScreenSharingButton: callType === 'video',
-          showUserList: true,
-          showMemberList: true,
+          showScreenSharingButton: true, // Always show screen sharing button
+          showUserList: false, // Hide user list for 1-on-1 calls
+          showMemberList: false, // Hide member list for 1-on-1 calls
           enableVideo: callType === 'video',
           turnOnCameraWhenJoining: callType === 'video',
           turnOnMicrophoneWhenJoining: true,
           showLeavingView: false, // Don't show leaving confirmation
+          // Force enable audio and video permissions
+          showMicrophoneStateOnJoining: true,
+          showCameraStateOnJoining: callType === 'video',
+          // Auto-grant permissions
+          autoLeaveRoomWhenOnlySelfInRoom: true,
+          // Callback handlers
           onLeaveRoom: () => {
+            console.log('User left the room');
             if (isMounted) {
               endCurrentCall();
-              navigate('/');
             }
           },
           onUserJoin: (users: any[]) => {
-            console.log('Users joined:', users);
+            console.log('User joined call:', users);
+            // Force unmute when user joins
+            users.forEach((user: any) => {
+              if (user.userID !== user.id) {
+                try {
+                  zp.setRemoteUserAudioMute(user.userID, false);
+                  if (callType === 'video') {
+                    zp.setRemoteUserVideoMute(user.userID, false);
+                  }
+                } catch (error) {
+                  console.log('Could not unmute user:', error);
+                }
+              }
+            });
           },
           onUserLeave: (users: any[]) => {
-            console.log('Users left:', users);
+            console.log('User left call, remaining users:', users);
+            // End call immediately when other user leaves
+            if (users.length <= 1 && isMounted) {
+              setTimeout(() => {
+                endCurrentCall();
+              }, 1000); // Reduced delay
+            }
+          },
+          // Audio/Video state callbacks
+          onUserAudioStateUpdate: (userList: any[]) => {
+            console.log('Audio state updated:', userList);
+          },
+          onUserVideoStateUpdate: (userList: any[]) => {
+            console.log('Video state updated:', userList);
           },
         });
       } catch (error) {
@@ -129,16 +184,19 @@ const CallPage: React.FC = () => {
     };
   }, [user, roomId, permissionsGranted, callType, navigate, toast, endCurrentCall]);
 
-  // Cleanup function
+  // Cleanup function - only clean up instances, don't call endCurrentCall
   useEffect(() => {
     return () => {
       if (window.zegoInstance) {
-        window.zegoInstance.destroy();
-        delete window.zegoInstance;
+        try {
+          window.zegoInstance.destroy();
+          delete window.zegoInstance;
+        } catch (error) {
+          console.error('Error cleaning up Zego instance:', error);
+        }
       }
-      endCurrentCall();
     };
-  }, [endCurrentCall]);
+  }, []);
 
   // Permissions are auto-granted, no need for permission screens
 

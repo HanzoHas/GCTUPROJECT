@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { SubchannelType, ChannelType, useChannel, ChannelAnnouncementType } from '@/contexts/ChannelContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -53,9 +53,11 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
   ) || [];
   
   useEffect(() => {
-    // Scroll to bottom of messages
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, channelAnnouncements]);
+    // Scroll to bottom of messages only when new messages arrive
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages.length]);
   
   // Function to fetch messages for the current subchannel
   const fetchMessages = async () => {
@@ -108,29 +110,30 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
     }
   }, [subchannel]);
   
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault(); // Prevent form submission and page refresh
     if (!messageText.trim() || !conversationId) return;
+    
+    const messageToSend = messageText.trim();
+    setMessageText(''); // Clear immediately for better UX
     
     try {
       await sendMessage({
         sessionToken: localStorage.getItem('sessionToken') || '',
         conversationId: conversationId,
-        content: messageText,
+        content: messageToSend,
         type: 'text'
       });
-      
-      // Clear the message text - the message will appear via real-time subscription
-      setMessageText('');
     } catch (error) {
       console.error('Error sending message:', error);
+      setMessageText(messageToSend); // Restore message on error
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
         variant: "destructive"
       });
     }
-  };
+  }, [messageText, conversationId, sendMessage, toast]);
   
   const handleCreateAnnouncement = async () => {
     if (!announcementTitle.trim() || !announcementContent.trim()) {
@@ -370,16 +373,12 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <AnimatePresence>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-full">
+        <div className="min-h-0 flex-1">
           {messages.map((message) => (
-            <motion.div
+            <div
               key={message.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'} mb-4`}
             >
               <div className="flex max-w-[80%]">
                 {message.senderId !== user?.id && (
@@ -400,10 +399,10 @@ export function SubchannelContent({ channel, subchannel }: SubchannelContentProp
                   </p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </AnimatePresence>
-        <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
+        </div>
       </div>
       
       <div className="flex-none p-4 border-t">

@@ -98,9 +98,9 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Failed to generate call token');
       }
       
-      // Open in new tab to prevent navigation issues
+      // Navigate to call page in same window
       const callUrl = `/call/${roomId}?type=${callType}`;
-      window.open(callUrl, '_blank', 'noopener,noreferrer');
+      navigate(callUrl);
       
     } catch (error) {
       console.error('Error creating call room:', error);
@@ -232,9 +232,9 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
         throw new Error('Failed to generate call token');
       }
       
-      // Open in new tab to prevent navigation issues
+      // Navigate to call page in same window
       const callUrl = `/call/${roomId}?type=${callType}`;
-      window.open(callUrl, '_blank', 'noopener,noreferrer');
+      navigate(callUrl);
       
     } catch (error) {
       console.error('Error joining call:', error);
@@ -254,11 +254,23 @@ export const ZegoProvider = ({ children }: { children: ReactNode }) => {
       setZegoInstance(null);
     }
     
+    // Clean up global instance
+    if (window.zegoInstance) {
+      try {
+        window.zegoInstance.destroy();
+        delete window.zegoInstance;
+      } catch (error) {
+        console.error('Error cleaning up global Zego instance:', error);
+      }
+    }
+    
     setIsInCall(false);
     setCurrentCallId(null);
     
-    // Go back to previous page
-    navigate(-1);
+    // Only navigate if we're currently in a call page
+    if (window.location.pathname.includes('/call/')) {
+      navigate(-1);
+    }
   };
 
   // Cleanup on unmount

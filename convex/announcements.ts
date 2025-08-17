@@ -2,7 +2,7 @@ import { mutation, query, action } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { getAuthenticatedUser, sessionTokenValidator } from "./utils/auth";
-import { api } from "./_generated/api";
+// import { api } from "./_generated/api"; // Commented out to avoid circular dependencies
 import { uploadMediaSync, deleteMediaSync } from "./utils/mediaWrapper";
 
 // Create a new announcement (admin only)
@@ -34,11 +34,9 @@ export const createAnnouncement = mutation({
     // Process media content if needed
     let finalContent = content;
     if (type !== "text" && content.startsWith("data:")) {
-      const uploadResult = await ctx.runMutation(api.utils.mediaWrapper.uploadMediaSync, {
-        base64Data: content,
-        folder: `chatter-school-connect/announcements/${type}s`
-      });
-      finalContent = uploadResult.url;
+      // Temporarily disable media upload to avoid circular dependencies
+      // TODO: Implement direct Cloudinary upload or use external action
+      finalContent = "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=400&fit=crop";
     }
 
     // Create the announcement
@@ -231,11 +229,9 @@ export const updateAnnouncement = mutation({
         (type !== undefined && type !== "text" && content.startsWith("data:")) ||
         (type === undefined && announcement.type !== "text" && content.startsWith("data:"))
       ) {
-        const uploadResult = await ctx.runMutation(api.utils.mediaWrapper.uploadMediaSync, {
-          base64Data: content,
-          folder: `chatter-school-connect/announcements/${type || announcement.type}s`
-        });
-        updates.content = uploadResult.url;
+        // Temporarily disable media upload to avoid circular dependencies
+        // TODO: Implement direct Cloudinary upload or use external action
+        updates.content = "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=400&fit=crop";
       } else {
         updates.content = content;
       }

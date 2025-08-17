@@ -37,6 +37,7 @@ const GroupCallButton: React.FC<GroupCallButtonProps> = ({
   const { toast } = useToast();
   const { initCall } = useZego();
   const sendMessage = useMutation(api.messages.sendMessage);
+  const sendGroupCallInvite = useMutation(api.notifications.sendGroupCallInvite);
   
   // Memoized click handler with proper error handling
   const handleClick = useCallback(async () => {
@@ -79,12 +80,21 @@ const GroupCallButton: React.FC<GroupCallButtonProps> = ({
         type: 'text'
       });
 
+      // Send individual call notifications to all channel members
+      await sendGroupCallInvite({
+        subchannelId: subchannelId as Id<"studySubchannels">,
+        roomId,
+        callType: variant,
+        callerName: user.username,
+        callerId: user.id as Id<"users">
+      });
+
       // Use the Zego context to properly initiate the group call
       initCall(roomId, channelName, variant, conversationResult.conversationId);
       
       toast({
         title: "Call Started",
-        description: `${callType} call started in ${channelName}`,
+        description: `${callType} call started in ${channelName}. All members have been notified.`,
       });
     } catch (error) {
       console.error('Error starting group call:', error);

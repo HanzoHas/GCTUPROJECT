@@ -1,15 +1,14 @@
-import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { mutation } from "./_generated/server";
 
 // Action to update existing channels to be hidden
-export const updateExistingChannels = action({
+export const updateExistingChannels = mutation({
   args: {},
   handler: async (ctx): Promise<{success: boolean, channelsUpdated: number, totalChannels: number, message: string}> => {
     console.log("🔧 Starting to update existing channels to be hidden...");
 
     try {
-      // Get all existing channels
-      const channels: any[] = await ctx.runQuery(api.seedHelpers.getAllChannels, {});
+      // Get all existing channels directly from database
+      const channels = await ctx.db.query("studyChannels").collect();
       console.log(`Found ${channels.length} existing channels`);
       
       let channelsUpdated = 0;
@@ -21,11 +20,8 @@ export const updateExistingChannels = action({
           continue;
         }
         
-        // Update channel to be hidden
-        await ctx.runMutation(api.seedHelpers.updateChannelVisibility, {
-          channelId: channel._id,
-          isHidden: true
-        });
+        // Update channel to be hidden directly
+        await ctx.db.patch(channel._id, { isHidden: true });
         
         channelsUpdated++;
         console.log(`✅ Updated channel "${channel.name}" to be hidden`);

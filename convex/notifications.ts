@@ -200,6 +200,67 @@ export const createNotification = mutation({
 });
 
 // Send a call notification to a user
+// Send group call notifications to all subchannel members
+export const sendGroupCallInvite = mutation({
+  args: {
+    subchannelId: v.id("studySubchannels"),
+    roomId: v.string(),
+    callType: v.union(v.literal("audio"), v.literal("video")),
+    callerName: v.string(),
+    callerId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get the subchannel
+    const subchannel = await ctx.db.get(args.subchannelId);
+    if (!subchannel) {
+      throw new ConvexError("Subchannel not found");
+    }
+
+    // Get the channel that contains this subchannel
+    const channel = await ctx.db.get(subchannel.channelId);
+    if (!channel) {
+      throw new ConvexError("Channel not found");
+    }
+
+    // Get all members of the channel from channelMembers table (excluding the caller)
+    const channelMemberships = await ctx.db
+      .query("channelMembers")
+      .withIndex("by_channel", (q) => q.eq("channelId", subchannel.channelId))
+      .collect();
+    
+    const recipientIds = channelMemberships
+      .map(membership => membership.userId)
+      .filter((memberId: any) => memberId !== args.callerId);
+
+    // Send notification to each member
+    let notificationsSent = 0;
+    for (const recipientId of recipientIds) {
+      try {
+        await ctx.db.insert("notifications", {
+          userId: recipientId,
+          type: "call" as any,
+          read: false,
+          title: "Group Call Started",
+          content: `${args.callerName} started a ${args.callType} call in ${subchannel.name}`,
+          timestamp: Date.now(),
+          sourceId: args.roomId,
+          sourceType: "call" as any,
+          callData: {
+            callType: args.callType,
+            roomId: args.roomId,
+            callerName: args.callerName,
+          },
+        });
+        notificationsSent++;
+      } catch (error) {
+        console.error(`Failed to send notification to user ${recipientId}:`, error);
+      }
+    }
+
+    return { notificationsSent };
+  },
+});
+
 export const sendCallNotification = mutation({
   args: {
     sessionToken: sessionTokenValidator,

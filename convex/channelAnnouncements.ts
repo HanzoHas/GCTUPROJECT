@@ -49,11 +49,9 @@ export const createChannelAnnouncement = mutation({
     // Process media content if needed
     let finalContent = content;
     if (type !== "text" && content.startsWith("data:")) {
-      const uploadResult = await ctx.runMutation(api.utils.mediaWrapper.uploadMediaSync, {
-        base64Data: content,
-        folder: `chatter-school-connect/channel-announcements/${type}s`
-      });
-      finalContent = uploadResult.url;
+      // For now, just store the base64 data directly
+      // Media upload will be handled by the frontend or a separate process
+      finalContent = content;
     }
 
     // Create the announcement
@@ -257,11 +255,9 @@ export const updateChannelAnnouncement = mutation({
         (type !== undefined && type !== "text" && content.startsWith("data:")) ||
         (type === undefined && announcement.type !== "text" && content.startsWith("data:"))
       ) {
-        const uploadResult = await ctx.runMutation(api.utils.mediaWrapper.uploadMediaSync, {
-          base64Data: content,
-          folder: `chatter-school-connect/channel-announcements/${type || announcement.type}s`
-        });
-        updates.content = uploadResult.url;
+        // For now, just store the base64 data directly
+        // Media upload will be handled by the frontend or a separate process
+        updates.content = content;
       } else {
         updates.content = content;
       }

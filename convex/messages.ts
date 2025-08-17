@@ -39,13 +39,9 @@ export const sendMessage = mutation({
     let attachments = [];
     
     if (type !== "text" && content.startsWith("data:")) {
-      // Directly call the uploadMediaSync function which handles Cloudinary upload
-      const uploadResult = await ctx.runMutation(api.utils.mediaWrapper.uploadMediaSync, {
-        base64Data: content,
-        folder: `chatter-school-connect/messages/${type}`
-      });
-      
-      finalContent = uploadResult.url;
+      // For now, just store the base64 data directly
+      // Media upload will be handled by the frontend or a separate process
+      finalContent = content;
     }
 
     // If it's a reply, verify the message exists and is in the same conversation
