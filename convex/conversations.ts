@@ -82,8 +82,21 @@ export const getUserConversations = query({
     const conversationPromises = conversationIds.map(id => ctx.db.get(id));
     const conversationResults = await Promise.all(conversationPromises);
     
+    // Filter out subchannel conversations (they contain " - " pattern)
+    const filteredConversations = conversationResults.filter(conv => {
+      if (!conv) return false;
+      
+      // Filter out subchannel conversations that follow the pattern "SubchannelName - ChannelName"
+      if (conv.name && conv.name.includes(" - ") && conv.isGroup) {
+        console.log(`Filtering out subchannel conversation: ${conv.name}`);
+        return false;
+      }
+      
+      return true;
+    });
+    
     // Batch fetch all conversation members for direct conversations
-    const directConversationIds = conversationResults
+    const directConversationIds = filteredConversations
       .filter(conv => conv && !conv.isGroup)
       .map(conv => conv!._id);
       
@@ -110,7 +123,7 @@ export const getUserConversations = query({
     });
 
     // Process conversations with cached data
-    const conversations = conversationResults.map((conversation, index) => {
+    const conversations = filteredConversations.map((conversation, index) => {
       if (!conversation) return null;
       
       let otherMember = null;
@@ -312,6 +325,8 @@ export const getConversationBySubchannel = query({
     // Find the conversation by name pattern (created in seed script)
     // The seed script creates conversations with pattern: "${subchannelName} - ${channelName}"
     const expectedConversationName = `${subchannel.name} - ${channel.name}`;
+    console.log(`Looking for subchannel conversation: ${expectedConversationName} for user ${userId}`);
+    
     let conversation = await ctx.db
       .query("conversations")
       .filter((q) => q.eq(q.field("name"), expectedConversationName))
@@ -319,6 +334,7 @@ export const getConversationBySubchannel = query({
 
     // If not found with exact match, try to find by partial match (more flexible)
     if (!conversation) {
+      console.log(`Exact match not found, trying flexible search...`);
       const conversations = await ctx.db
         .query("conversations")
         .filter((q) => q.eq(q.field("type"), "group"))
@@ -330,10 +346,32 @@ export const getConversationBySubchannel = query({
         conv.name.toLowerCase().includes(subchannel.name.toLowerCase()) &&
         conv.name.toLowerCase().includes(channel.name.toLowerCase())
       ) || null;
+      
+      if (conversation) {
+        console.log(`Found conversation via flexible search: ${conversation.name}`);
+      }
+    } else {
+      console.log(`Found conversation via exact match: ${conversation.name}`);
     }
 
     if (!conversation) {
+      console.log(`No conversation found for subchannel: ${subchannel.name} in channel: ${channel.name}`);
       throw new ConvexError("Conversation not found for this subchannel");
+    }
+    
+    // Check if user is a member of this conversation
+    const membership = await ctx.db
+      .query("conversationMembers")
+      .withIndex("by_conversation_and_user", (q) =>
+        q.eq("conversationId", conversation._id).eq("userId", userId)
+      )
+      .first();
+      
+    console.log(`User ${userId} membership in conversation ${conversation.name}: ${membership ? 'MEMBER' : 'NOT MEMBER'}`);
+    
+    if (!membership) {
+      console.log(`User ${userId} is not a member of conversation ${conversation._id} (${conversation.name})`);
+      throw new ConvexError("You are not a member of this subchannel conversation");
     }
 
     return {

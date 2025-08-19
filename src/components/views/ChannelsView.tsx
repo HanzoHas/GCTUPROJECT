@@ -115,10 +115,10 @@ function ChannelsView() {
     setIsSearchingChannels(true);
     try {
       const sessionToken = localStorage.getItem('sessionToken') || '';
-      // We'll search for all channels and then filter by name
+      // Get all public channels for joining
       const allChannels = await directApi._callConvexFunction(
         "channels:getChannelsByLevel", 
-        { sessionToken }
+        { sessionToken, includeAllPublic: true }
       );
       
       // Filter channels by search term
@@ -128,11 +128,8 @@ function ChannelsView() {
         channel.description?.toLowerCase().includes(query)
       );
       
-      // Filter out channels the user is already a member of
-      const userChannelIds = new Set(userChannels.map(c => c._id));
-      const availableToJoin = filtered.filter((c: ChannelType) => !userChannelIds.has(c._id));
-      
-      setAvailableChannels(availableToJoin);
+      // Show all filtered channels (don't filter out user's existing channels)
+      setAvailableChannels(filtered);
     } catch (error) {
       console.error('Error searching channels:', error);
       toast({

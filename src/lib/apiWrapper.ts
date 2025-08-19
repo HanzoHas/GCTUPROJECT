@@ -107,6 +107,7 @@ const functionMap: Record<string, any> = {
   "channels:updateChannel": api.channels.updateChannel,
   "channels:deleteChannel": api.channels.deleteChannel,
   "channels:getChannelsByLevel": api.channels.getChannelsByLevel,
+  "channels:debugChannels": api.channels.debugChannels,
   "channels:addChannelMember": api.channels.addChannelMember,
   "channels:joinChannel": api.channels.joinChannel,
   

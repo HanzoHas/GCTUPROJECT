@@ -473,6 +473,74 @@ export const joinChannel = mutation({
       joinedAt: Date.now(),
     });
 
+    // Get all subchannels for this channel
+    const subchannels = await ctx.db
+      .query("studySubchannels")
+      .withIndex("by_channel", (q) => q.eq("channelId", channelId))
+      .collect();
+
+    // Add user to all subchannel conversations
+    console.log(`Adding user ${userId} to ${subchannels.length} subchannels for channel ${channel.name}`);
+    
+    for (const subchannel of subchannels) {
+      // Find the conversation for this subchannel using the correct naming pattern
+      const expectedConversationName = `${subchannel.name} - ${channel.name}`;
+      console.log(`Looking for conversation: ${expectedConversationName}`);
+      
+      let conversation = await ctx.db
+        .query("conversations")
+        .filter((q) => q.eq(q.field("name"), expectedConversationName))
+        .first();
+
+      // If not found with exact match, try flexible search
+      if (!conversation) {
+        console.log(`Exact match not found, trying flexible search...`);
+        const conversations = await ctx.db
+          .query("conversations")
+          .filter((q) => q.eq(q.field("type"), "group"))
+          .collect();
+        
+        conversation = conversations.find(conv => 
+          conv.name && 
+          conv.name.toLowerCase().includes(subchannel.name.toLowerCase()) &&
+          conv.name.toLowerCase().includes(channel.name.toLowerCase())
+        ) || null;
+        
+        if (conversation) {
+          console.log(`Found conversation via flexible search: ${conversation.name}`);
+        }
+      } else {
+        console.log(`Found conversation via exact match: ${conversation.name}`);
+      }
+
+      if (conversation) {
+        // Check if user is already a member of this conversation
+        const existingConversationMember = await ctx.db
+          .query("conversationMembers")
+          .withIndex("by_conversation_and_user", (q) =>
+            q.eq("conversationId", conversation._id).eq("userId", userId)
+          )
+          .first();
+
+        if (!existingConversationMember) {
+          console.log(`Adding user to conversation: ${conversation.name}`);
+          // Add user to subchannel conversation
+          await ctx.db.insert("conversationMembers", {
+            conversationId: conversation._id,
+            userId,
+            isAdmin: false,
+            isMuted: false,
+            joinedAt: Date.now(),
+            isActive: true,
+          });
+        } else {
+          console.log(`User already member of conversation: ${conversation.name}`);
+        }
+      } else {
+        console.log(`No conversation found for subchannel: ${subchannel.name}`);
+      }
+    }
+
     return { success: true };
   },
 });
@@ -482,37 +550,79 @@ export const getChannelsByLevel = query({
   args: {
     sessionToken: sessionTokenValidator,
     level: v.optional(v.union(v.literal("100"), v.literal("200"), v.literal("300"))),
+    includeAllPublic: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await getAuthenticatedUser(ctx, args.sessionToken);
-    const { level } = args;
+    const { level, includeAllPublic } = args;
 
-    // Get only visible channels that user is a member of
     const { userId } = await getAuthenticatedUser(ctx, args.sessionToken);
     
-    // Get user's channel memberships
-    const memberships = await ctx.db
-      .query("channelMembers")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    let channels;
     
-    const memberChannelIds = memberships.map(m => m.channelId);
-    
-    // Get channels user is a member of
-    const memberChannels = await Promise.all(
-      memberChannelIds.map(id => ctx.db.get(id))
-    );
-    
-    const validChannels = memberChannels.filter((channel): channel is NonNullable<typeof channel> => channel !== null);
+    if (includeAllPublic) {
+      // Get ALL study channels (including hidden ones for search)
+      channels = await ctx.db
+        .query("studyChannels")
+        .collect();
+    } else {
+      // Get only visible channels that user is a member of
+      const memberships = await ctx.db
+        .query("channelMembers")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+      
+      const memberChannelIds = memberships.map(m => m.channelId);
+      
+      // Get channels user is a member of
+      const memberChannels = await Promise.all(
+        memberChannelIds.map(id => ctx.db.get(id))
+      );
+      
+      channels = memberChannels.filter((channel): channel is NonNullable<typeof channel> => channel !== null);
+    }
     
     // Filter by level if provided
     const filteredChannels = level 
-      ? validChannels.filter(channel => channel.level === level)
-      : validChannels;
+      ? channels.filter(channel => channel.level === level)
+      : channels;
 
     // Add lecturer info
     const channelsWithDetails = await Promise.all(
       filteredChannels.map(async (channel) => {
+        const lecturer = await ctx.db.get(channel.lecturerId);
+        return {
+          ...channel,
+          lecturer: {
+            id: lecturer?._id || "unknown",
+            name: lecturer?.username || "Unknown",
+            avatar: lecturer?.profilePicture,
+          }
+        };
+      })
+    );
+    
+    return channelsWithDetails;
+  },
+});
+
+// Get all public channels for joining (not just user's channels)
+export const getAllPublicChannels = query({
+  args: {
+    sessionToken: sessionTokenValidator,
+  },
+  handler: async (ctx, args) => {
+    await getAuthenticatedUser(ctx, args.sessionToken);
+    
+    // Get all public study channels (not hidden)
+    const publicChannels = await ctx.db
+      .query("studyChannels")
+      .filter((q) => q.neq(q.field("isHidden"), true))
+      .collect();
+
+    // Add lecturer info
+    const channelsWithDetails = await Promise.all(
+      publicChannels.map(async (channel) => {
         const lecturer = await ctx.db.get(channel.lecturerId);
         return {
           ...channel,
