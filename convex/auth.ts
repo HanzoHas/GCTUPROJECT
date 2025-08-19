@@ -123,13 +123,14 @@ export const login = mutation({
       throw new ConvexError("Invalid email or password");
     }
 
-    // Check if email is verified
+    // Check if email is verified (skip for legacy users without verification records)
     const verificationRecord = await ctx.db
       .query("verificationCodes")
       .withIndex("by_email", (q) => q.eq("email", email.toLowerCase()))
       .first();
 
-    if (!verificationRecord || !verificationRecord.verified) {
+    // Only require verification if a verification record exists and is not verified
+    if (verificationRecord && !verificationRecord.verified) {
       throw new ConvexError("Email verification required");
     }
 

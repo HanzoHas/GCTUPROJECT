@@ -14,7 +14,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import GroupCallButton from '@/components/calls/GroupCallButton';
 import { useZego } from '@/contexts/ZegoContext';
-import { useMutation, useQuery } from 'convex/react';
+import { useMutation, useQuery, useAction } from 'convex/react';
 import { api } from '@/lib/convex';
 import { getSessionToken } from '@/lib/utils';
 import { MessageSkeleton } from '@/components/ui/loading-skeleton';
@@ -39,7 +39,7 @@ export function SubchannelContent({ channel, subchannel, onBack }: SubchannelCon
   const [announcementContent, setAnnouncementContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendMessage = useMutation(api.messages.sendMessage);
-  const uploadMedia = useMutation(api.utils.mediaWrapper.uploadMediaSync);
+  const uploadMedia = useAction(api.utils.mediaWrapper.uploadMediaSync);
   
   // Memoize session token to prevent unnecessary re-renders
   const sessionToken = useMemo(() => getSessionToken(), []);
