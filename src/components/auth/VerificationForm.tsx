@@ -28,12 +28,7 @@ const VerificationForm = () => {
   } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Auto-send verification code when the component mounts
-    if (needsVerification && verificationEmail && !countdown) {
-      handleSendCode();
-    }
-  }, [needsVerification, verificationEmail]);
+  // Remove auto-send on mount - the code is already sent from registration form
 
   useEffect(() => {
     // Countdown timer for resend code function

@@ -190,6 +190,7 @@ const ChatView = () => {
               conversations={conversations}
               currentConversation={currentConversation}
               onSelectConversation={handleSelectConversation}
+              searchQuery={searchQuery}
             />
             </div>
           </motion.div>

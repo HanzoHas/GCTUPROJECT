@@ -28,6 +28,7 @@ interface ConversationListProps {
   conversations: Conversation[];
   currentConversation: Conversation | null;
   onSelectConversation: (conversation: Conversation) => void;
+  searchQuery?: string;
 }
 
 // Function to get proper display name for a conversation
@@ -49,8 +50,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
   conversations,
   currentConversation,
   onSelectConversation,
+  searchQuery = '',
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [username, setUsername] = useState('');
@@ -68,9 +69,9 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const { user } = useAuth();
 
   const filteredConversations = conversations.filter(conversation => 
-    conversation.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conversation.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conversation.members.some(member => 
-      member.username.toLowerCase().includes(searchTerm.toLowerCase())
+      member.username.toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
 
@@ -90,7 +91,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
   }, [conversations, user?.id]);
 
   // Subscribe to real-time status updates
-  const { statuses, isLoading: statusesLoading } = useUserStatus(userIdsToTrack);
+  const { statuses, error } = useUserStatus(userIdsToTrack);
   
   // Create a lookup map for faster status access
   const userStatusMap = useMemo(() => {
@@ -266,16 +267,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
     <div className="h-full flex flex-col">
       {/* Fixed Header */}
       <div className="p-3 sm:p-4 border-b">
-        <h2 className="text-lg font-semibold mb-3">Conversations</h2>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            className="pl-9 h-9"
-            placeholder="Search conversations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <h2 className="text-lg font-semibold">Conversations</h2>
       </div>
       
       {/* Scrollable Content Area */}
@@ -284,7 +276,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
         {filteredConversations.length > 0 ? (
           filteredConversations.map((conversation) => {
             // Determine online status for direct conversations
-            let isOnline = conversation.online;
+            let isOnline = false;
             let statusText = '';
             
             if (!conversation.isGroup) {
@@ -368,7 +360,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
             </div>
             <h3 className="font-medium mb-1">No conversations found</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              {searchTerm ? 'Try a different search term' : 'Add a friend to start chatting'}
+              {searchQuery ? 'Try a different search term' : 'Add a friend to start chatting'}
             </p>
           </div>
         )}
