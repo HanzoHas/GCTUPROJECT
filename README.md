@@ -1,3 +1,98 @@
+
+#🏫 GCTUPROJECT
+
+> THE MAIN FINAL YEAR
+
+## Overview
+
+GCTUPROJECT is the main final year project developed in TypeScript. It aims to deliver a robust solution for GCTU educational platforms, e.g., student management, event organization, etc.. This repository contains all the core code, assets, and configuration files needed to run and develop the project.
+
+## Features
+
+- Built with TypeScript for type safety and maintainability
+- Modern UI components (Radix UI, shadcn, etc.)
+- Integration with real-time and cloud services (e.g., Convex, Cloudinary)
+- Authentication and secure data handling (bcrypt, bcryptjs)
+- State management and data fetching (TanStack React Query)
+- Custom UI utilities and animations (Lottie, cmdk)
+- Modular and scalable architecture
+
+## 👨‍💻 Tech Stack
+
+- **Frontend:** React, TypeScript, Radix UI, shadcn
+- **Backend:** Convex (serverless)
+- **Other:** Cloudinary for media, bcrypt for security, Lottie for animations
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18+ recommended)
+- Yarn or npm
+
+### Installation
+
+```bash
+git clone https://github.com/HanzoHas/GCTUPROJECT.git
+cd GCTUPROJECT
+npm install
+```
+
+### Running Locally
+
+```bash
+npm run dev
+```
+
+The app will run in development mode. Open [http://localhost:5173](http://localhost:5173) to view it in your browser.
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+### Linting
+
+```bash
+npm run lint
+```
+
+## Scripts
+
+| Command         | Description                        |
+|-----------------|------------------------------------|
+| `npm run dev`   | Run the development server         |
+| `npm run build` | Build the project for production   |
+| `npm run lint`  | Run ESLint on the codebase         |
+| `npm run preview` | Preview the production build      |
+| `npm run convex` | Run Convex server locally         |
+| `npm run dev:all` | Run frontend and Convex together  |
+
+## Folder Structure
+
+```
+GCTUPROJECT/
+├── src/           # Source code
+├── public/        # Static assets
+├── package.json   # Project dependencies and scripts
+├── README.md      # Project documentation
+```
+
+## Contributing
+
+Contributions are welcome! Please open issues and submit pull requests for bug fixes, improvements, or new features.
+
+
+
+## Author
+
+- [HanzoHas](https://github.com/HanzoHas)
+
+---
+
+
+
 ## Email Verification Setup (Brevo / Sendinblue)
 
 The application now sends verification emails through [Brevo (Sendinblue)](https://www.brevo.com/). Follow the steps below to configure it:
